@@ -21,14 +21,16 @@ export function linkedIssue(body, opts = {}) {
 }
 
 /**
- * Which team a PR belongs to in the report: its team label, else the title prefix, else the branch prefix.
+ * Which team a PR belongs to in the report: its team label, else the title (the scope of a Conventional
+ * Commit title, `feat(team-2): …`, or the `[team-2] …` prefix older PRs used), else the branch prefix.
  * @param {{ title: string, head: string, labels: string[] }} pr
  * @param {string[]} teamLabels
  */
 export function teamOf(pr, teamLabels) {
   const fromLabels = pr.labels.filter((l) => teamLabels.includes(l));
   if (fromLabels.length === 1) return fromLabels[0];
-  const title = /^\[([^\]]+)\]/.exec(pr.title.trim())?.[1];
+  const trimmed = pr.title.trim();
+  const title = /^[a-z]+\(([^)]+)\)!?:/.exec(trimmed)?.[1] ?? /^\[([^\]]+)\]/.exec(trimmed)?.[1];
   if (title && teamLabels.includes(title)) return title;
   const branch = pr.head.split("/")[0];
   if (teamLabels.includes(branch)) return branch;
