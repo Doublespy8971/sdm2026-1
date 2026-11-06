@@ -18,9 +18,14 @@ permissions:
 
 jobs:
   check:
-    name: lint, typecheck, test, build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Runs on every OS the team develops on, so a change that only works on one shows up red.
+    name: checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -34,6 +39,10 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
+
+      # Node/pnpm pins, LF line endings, no file names that differ only by case.
+      - name: Setup check
+        run: pnpm check:setup --ci
 
       - name: Lint
         run: pnpm lint
