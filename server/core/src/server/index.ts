@@ -1,5 +1,9 @@
 /**
- * Server-side core: BaseGameRoom, input recording, replays, room codes, debug commands.
- * Owner: platform team. Not implemented yet (follow-up issue).
+ * Server-side core: the Simulation, replay runner, debug commands, room codes, stats and the
+ * Colyseus room built from a game definition.
+ * Owner: platform team.
  */
-export {};
+export * from "./debugCommands.ts";
+export * from "./replayRunner.ts";
+export * from "./simulation.ts";
+export * from "./stateHash.ts";
