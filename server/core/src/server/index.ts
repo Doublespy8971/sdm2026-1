@@ -5,5 +5,7 @@
  */
 export * from "./debugCommands.ts";
 export * from "./replayRunner.ts";
+export * from "./roomCodes.ts";
 export * from "./simulation.ts";
 export * from "./stateHash.ts";
+export * from "./stats.ts";
