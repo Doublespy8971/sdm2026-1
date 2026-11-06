@@ -1,4 +1,4 @@
-# Checks that every pull request follows the workflow: [label] title, one team label, branch and base
+# Checks that every pull request and its commits follow the workflow: [label] title, one team label, branch and base
 # branch names, template headings filled, linked issue, ticked checklist (pnpm check:pr, issue #42).
 # Separate from ci.yml so a template problem is reported on its own. Owner: platform team.
 name: Workflow checks
@@ -38,3 +38,11 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node server/tooling/workflow/check-pr.mjs --event "$GITHUB_EVENT_PATH" --git-base "origin/$BASE_REF" --git-head "$HEAD_SHA"
+
+      # Conventional Commits with an issue reference (pnpm check:commit, issue #43). Merge commits are exempt.
+      - name: Check the commit messages
+        if: ${{ !cancelled() }}
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node server/tooling/workflow/check-commit.mjs --range "origin/$BASE_REF..$HEAD_SHA"

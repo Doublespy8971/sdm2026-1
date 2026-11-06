@@ -69,9 +69,11 @@ Every change goes through the same path: **issue → branch → commits → pull
 ### 3. Commits
 
 - Keep each commit to one logical change.
-- Write the message in the imperative mood ("Add login page", not "Added login page").
-- Reference the issue in the commit body, e.g. `Refs #14`.
+- Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`, for example `feat(team-2): add login page`. Types: `feat`, `fix`, `docs`, `refactor`, `chore`, `ci`, `build`, `test`, `perf`. The scope is your team label.
+- Write the subject in the imperative mood, lowercase, at most 72 characters, without a trailing period ("add login page", not "Added login page.").
+- Reference the issue on its own line in the body, e.g. `Refs #14`.
 - Do not commit secrets, credentials, build output or large binaries.
+- Set up the commit template once: `git config commit.template .gitmessage`.
 
 ### 4. Pull request
 
@@ -90,6 +92,22 @@ Every change goes through the same path: **issue → branch → commits → pull
 - Resolve every review comment before merging.
 - Rebase on or merge in the base branch if your branch is behind, then merge.
 - Delete the branch after it is merged.
+
+## Templates, classification and checks
+
+Issues, pull requests and commits follow templates. **A script chooses the type, a skill fills the template, a check validates the result.** Agents never pick the type, template, team label or base branch themselves.
+
+| | Templates | Agent skill | Check |
+|---|---|---|---|
+| Issue | `.github/ISSUE_TEMPLATE/`: feature, bug, docs, chore, refactor | `fill-issue` | `pnpm check:issue` |
+| Pull request | `.github/PULL_REQUEST_TEMPLATE/`: the same five, plus release and sync | `fill-pr` | `pnpm check:pr`, also run by CI |
+| Commit | `.gitmessage` | `write-commit` | `pnpm check:commit`, also run by CI |
+
+- `pnpm workflow:classify --kind issue|pr|commit` decides the type from the change set (uncommitted files, `--staged`, or `--base <ref>`), plus the team label, the template and the base branch. The same change always gives the same answer.
+- If no rule decides, it exits 1 and lists the candidates. Pass `--type` after asking; it never guesses between feature, bug and refactor.
+- A PR from `main` is a release (into `prod`) or a sync (into `feature/team-N`): pass `--target`.
+- Every template heading is required, in order, and must be filled in. Write `None` if a section does not apply.
+- The skills live in `.claude/skills/`. The rules and their rationale are in `server/tooling/workflow/`.
 
 ## Never
 
