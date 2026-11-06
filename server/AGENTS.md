@@ -35,11 +35,29 @@ Replays only work if the simulation is deterministic:
 - Validate every client message with a zod schema before using it.
 - Keep tuning values in `config/*.json`, validated by the game's config schema, so designers change numbers without touching code.
 
+## Setting up a machine
+
+The same steps work on macOS, Windows and Linux. You need only Node, pnpm and (recommended) VS Code. No Docker, no version manager required.
+
+1. Install **Node 22.21.1** or a later 22.x (the exact pin is in `.nvmrc`). nvm and fnm users: `nvm install` or `fnm use --install-if-missing`. Otherwise download it from nodejs.org.
+2. Install **pnpm 10.28.0** (pinned by `packageManager` in `package.json`): `corepack enable`, or `npm install -g pnpm@10.28.0`. pnpm 10 switches to the pinned version by itself.
+3. Clone the repo and run `pnpm install`. It stops with a clear message if your Node version is wrong.
+4. Run `pnpm check:setup`. It checks Node and pnpm versions, that dependencies match the lockfile, LF line endings, file names that differ only by case, and that ports 2567 and 5173 are free. Each failure says how to fix it.
+5. Open the repo in VS Code and install the recommended extensions when asked (Biome, EditorConfig). Files are formatted with Biome on save.
+
+Why these rules exist:
+
+- `.gitattributes` keeps LF line endings in every checkout, including on Windows.
+- File names that differ only by case (`Player.ts` / `player.ts`) work on macOS and Windows but break on Linux, which is what CI and Railway run.
+- Scripts are written in TypeScript or plain Node.js, never bash, so they run on every OS.
+- `.vscode/settings.json` and `.vscode/extensions.json` are shared. Keep personal VS Code settings in your user settings; the rest of `.vscode/` is ignored by git.
+
 ## Commands (repo root)
 
 | Command | What it does |
 |---|---|
-| `pnpm install` | Install everything (Node 22, pnpm 10) |
+| `pnpm install` | Install everything (checks your Node version first) |
+| `pnpm check:setup` | Check this machine's setup and explain how to fix problems (`--json` for scripts) |
 | `pnpm dev` | Run the template game: server on :2567, client on :5173 |
 | `pnpm --filter @team-N/game dev` | Run your team's game |
 | `pnpm lint` / `pnpm format` | Biome check / fix (Markdown is excluded) |
@@ -51,7 +69,7 @@ Run `pnpm lint && pnpm typecheck && pnpm test` before opening a PR.
 
 ## CI
 
-Every pull request and every push to `main` runs the **CI** check (`.github/workflows/ci.yml`): `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`, the same commands as above. A red check means the PR is not ready for review.
+Every pull request and every push to `main` runs the **CI** checks (`.github/workflows/ci.yml`) on Ubuntu, Windows and macOS: `pnpm install --frozen-lockfile`, `pnpm check:setup --ci`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`, the same commands as above. A red check on any OS means the PR is not ready for review.
 
 - It covers every package in the workspace, so a platform PR only passes when every team's game still builds.
 - `--frozen-lockfile` fails when `pnpm-lock.yaml` is out of date: run `pnpm install` and commit the lockfile.
