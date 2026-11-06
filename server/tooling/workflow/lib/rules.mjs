@@ -17,6 +17,9 @@ import { ownersOf } from "./ownership.mjs";
  * }} WorkflowConfig
  */
 
+/** A work branch: "<team-label>/<issue-number>-<short-description>". Group 1 is the label. */
+export const WORK_BRANCH = /^(team-[1-4]|platform|team-instructor)\/(\d+)-[a-z0-9][a-z0-9-]*$/;
+
 /**
  * Reads a Conventional-Commit prefix from a title or commit subject. A leading "[label] " is ignored.
  * @param {string | null | undefined} text

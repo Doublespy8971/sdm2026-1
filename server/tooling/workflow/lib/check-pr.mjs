@@ -1,10 +1,9 @@
 // Validates a pull request against its template. Pure: the caller passes the PR data and the
 // template texts, so the same rules run in CI, locally and in tests.
-import { baseFor, kindOfMainPr } from "./rules.mjs";
+import { baseFor, kindOfMainPr, WORK_BRANCH } from "./rules.mjs";
 import { headingsOf, sectionsOf, stripComments } from "./template.mjs";
 
 const normalize = (s) => s.trim().toLowerCase();
-const WORK_BRANCH = /^(team-[1-4]|platform|team-instructor)\/\d+-[a-z0-9][a-z0-9-]*$/;
 const WORK_TYPES = ["feature", "bug", "docs", "chore", "refactor"];
 
 /**
