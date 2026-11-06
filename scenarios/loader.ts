@@ -1,15 +1,6 @@
-import type { Scenario } from "./schema.js";
+import { type Scenario, ScenarioSchema } from "./schema.ts";
 
 export function parseScenario(data: unknown): Scenario {
-  if (
-    typeof data === "object" &&
-    data !== null &&
-    "id" in data &&
-    "name" in data &&
-    "players" in data &&
-    Array.isArray((data as Record<string, unknown>).players)
-  ) {
-    return data as Scenario;
-  }
-  throw new Error("Invalid scenario data");
+  // Zod handles all the validation and throws a clear error if it fails
+  return ScenarioSchema.parse(data);
 }
