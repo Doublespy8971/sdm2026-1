@@ -26,7 +26,7 @@ function body(linked = "Closes #12") {
 
 const pr = {
   number: 30,
-  title: "[team-2] Add login",
+  title: "feat(team-2): add login",
   body: body(),
   head: "team-2/12-add-login",
   base: "feature/team-2",
@@ -63,6 +63,11 @@ describe("teamOf", () => {
     expect(teamOf({ title: "[team-1] X", head: "x", labels: [] }, labels)).toBe("team-1");
     expect(teamOf({ title: "X", head: "platform/4-x", labels: [] }, labels)).toBe("platform");
     expect(teamOf({ title: "X", head: "feature/team-4", labels: [] }, labels)).toBe("team-4");
+  });
+  it("reads the team from a conventional title's scope, and still from an old [team-N] prefix", () => {
+    expect(teamOf({ title: "feat(team-1): add x", head: "x", labels: [] }, labels)).toBe("team-1");
+    expect(teamOf({ title: "fix(platform)!: drop y", head: "x", labels: [] }, labels)).toBe("platform");
+    expect(teamOf({ title: "feat(game): add x", head: "x", labels: [] }, labels)).toBeNull();
   });
   it("returns null when nothing names a team", () => {
     expect(teamOf({ title: "[course] X", head: "1-x", labels: ["documentation"] }, labels)).toBeNull();
