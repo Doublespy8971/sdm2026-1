@@ -1,5 +1,5 @@
 <!--
-Title format: [team-N] Short imperative summary
+Title format: [<team-label>] Short imperative summary
 Example:      [team-2] Add login page
 
 Fill in every section below. Don't delete or rename the headings: PRs are
@@ -15,7 +15,7 @@ Closes #
 
 ## Team
 
-<!-- Write your team (team-1, team-2, team-3 or team-4) and add the same label to this PR. -->
+<!-- Write your team label (team-1, team-2, team-3, team-4, platform or team-instructor) and add the same label to this PR. -->
 
 team-
 
@@ -35,11 +35,11 @@ team-
 
 ## Checklist
 
-- [ ] The PR closes an issue with `Closes #N`, and that issue has a `team-N` label
-- [ ] This PR has the same `team-N` label as the issue
-- [ ] The title starts with `[team-N]`
-- [ ] The branch is named `team-N/<issue-number>-<short-description>`
-- [ ] Changes only touch my own team's `games/team-N/` folder, or the issue explains why not
+- [ ] The PR closes an issue with `Closes #N`, and that issue has a team label
+- [ ] This PR has the same team label as the issue
+- [ ] The title starts with `[<team-label>]`
+- [ ] The branch is named `<team-label>/<issue-number>-<short-description>`
+- [ ] Changes only touch my own team's folder (see AGENTS.md), or the issue explains why not
 - [ ] Commits reference the issue (`Refs #N`)
 - [ ] No secrets, credentials, build output or large binaries are committed
 - [ ] The base branch is correct: `feature/team-N` for a work branch, `main` for a feature branch, `prod` for a release
