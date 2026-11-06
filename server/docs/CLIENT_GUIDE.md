@@ -179,6 +179,8 @@ Games add their own (the template has `spawn` and `tp id x y`).
 
 Request and response schemas are in `@sdm/core/shared`: import them, don't retype them.
 
+Not using TypeScript, or giving the contract to a tool or agent? [`generated/api.schema.json`](generated/api.schema.json) is the same contract as JSON Schema: every HTTP route with its request and responses, every WebSocket message, and the replay format. It's generated from the zod schemas by `pnpm gen:api`, and `pnpm test` fails if it's out of date.
+
 ## Replays and bug reports
 
 ```mermaid
