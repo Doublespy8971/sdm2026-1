@@ -42,6 +42,6 @@ team-
 - [ ] Changes only touch my own team's `games/team-N/` folder, or the issue explains why not
 - [ ] Commits reference the issue (`Refs #N`)
 - [ ] No secrets, credentials, build output or large binaries are committed
-- [ ] The base branch is correct: `main` for a work branch, `prod` only for a release
+- [ ] The base branch is correct: `feature/team-N` for a work branch, `dev` for a feature branch, `prod` for a release
 - [ ] The branch is up to date with its base branch
 - [ ] I tested the change as described under "How to test"
