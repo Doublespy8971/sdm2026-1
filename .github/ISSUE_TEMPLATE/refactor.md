@@ -2,12 +2,12 @@
 name: Refactor
 about: Restructure code without changing what it does
 title: "[team-label] "
-labels: ""
+labels: type:refactor
 ---
 
 <!--
 Title: [<team-label>] Short imperative summary, e.g. "[team-3] Split the room into systems".
-Add exactly one team label (team-1..4, platform or team-instructor).
+Add exactly one team label (team-1..4, platform or team-instructor) plus its type label (type:refactor, added by this template).
 Fill in every section. Don't delete or rename the headings; the checks and the evaluation read them.
 -->
 

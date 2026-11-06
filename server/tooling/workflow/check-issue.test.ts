@@ -23,7 +23,7 @@ const check = (over: Record<string, unknown>) =>
   checkIssue({
     title: "[team-2] Add login",
     body: valid.feature,
-    labels: ["team-2", "enhancement"],
+    labels: ["team-2", "type:feature"],
     config,
     templates,
     ...over,
@@ -49,7 +49,10 @@ describe("checkIssue", () => {
   });
 
   it("detects the bug template from its own headings and accepts it", () => {
-    expect(check({ body: valid.bug, labels: ["team-2", "bug"] })).toMatchObject({ ok: true, type: "bug" });
+    expect(check({ body: valid.bug, labels: ["team-2", "type:bug"] })).toMatchObject({
+      ok: true,
+      type: "bug",
+    });
   });
 
   it("rejects a title without a [label] prefix", () => {
@@ -63,7 +66,7 @@ describe("checkIssue", () => {
   });
 
   it("needs exactly one team label", () => {
-    expect(check({ labels: ["enhancement"] }).ok).toBe(false);
+    expect(check({ labels: ["type:feature"] }).ok).toBe(false);
     expect(check({ labels: ["team-1", "team-2"] }).ok).toBe(false);
   });
 
@@ -83,7 +86,7 @@ describe("checkIssue", () => {
   });
 
   it("accepts None as the content of a section", () => {
-    expect(check({ body: valid.bug.replace("Unknown yet", "None"), labels: ["team-2", "bug"] }).ok).toBe(
+    expect(check({ body: valid.bug.replace("Unknown yet", "None"), labels: ["team-2", "type:bug"] }).ok).toBe(
       true,
     );
   });
@@ -101,7 +104,7 @@ describe("checkIssue", () => {
   it("rejects a body that mixes the headings of two templates", () => {
     const body = `${valid.bug}\n## Pages affected\n\n- README.md\n`;
     expect(
-      check({ body, labels: ["team-2", "bug"] }).problems.map((p: { rule: string }) => p.rule),
+      check({ body, labels: ["team-2", "type:bug"] }).problems.map((p: { rule: string }) => p.rule),
     ).toContain("template");
   });
 
@@ -114,5 +117,25 @@ describe("checkIssue", () => {
   it("ignores headings inside code fences and HTML comments", () => {
     const body = `${valid.feature}\n<!-- ## Fake -->\n\n\`\`\`\n## Also fake\n\`\`\`\n`;
     expect(sectionsOf(body).map((s) => s.heading)).toEqual(["Goal", "What changes", "Done when"]);
+  });
+});
+
+describe("type labels", () => {
+  it("needs exactly one type label, the one the template applies", () => {
+    expect(
+      check({ labels: ["team-2"] })
+        .problems.map((p: { message: string }) => p.message)
+        .join(" "),
+    ).toContain('exactly one type label, "type:feature"');
+    expect(
+      check({ labels: ["team-2", "type:bug"] })
+        .problems.map((p: { message: string }) => p.message)
+        .join(" "),
+    ).toContain('takes the "type:feature" label, not "type:bug"');
+    expect(check({ labels: ["team-2", "type:feature", "type:docs"] }).ok).toBe(false);
+  });
+
+  it("is skipped when no labels are passed", () => {
+    expect(check({ labels: null }).problems.filter((p: { rule: string }) => p.rule === "labels")).toEqual([]);
   });
 });

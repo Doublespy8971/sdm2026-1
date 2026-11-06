@@ -2,12 +2,12 @@
 name: Documentation
 about: Add or fix documentation, rules or guides
 title: "[team-label] "
-labels: documentation
+labels: type:docs
 ---
 
 <!--
 Title: [<team-label>] Short imperative summary, e.g. "[team-instructor] Explain the branch model".
-Add exactly one team label (team-1..4, platform or team-instructor) plus the documentation label.
+Add exactly one team label (team-1..4, platform or team-instructor) plus its type label (type:docs, added by this template).
 Fill in every section. Don't delete or rename the headings; the checks and the evaluation read them.
 -->
 

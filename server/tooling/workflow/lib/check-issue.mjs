@@ -57,6 +57,20 @@ export function checkIssue({ title, body, labels = null, type = null, config, te
     return { ok: false, type: chosen, problems };
   }
 
+  // Labels: exactly one type label, the one this template applies (see labels.json).
+  const expectedType = config.types[chosen]?.githubLabel ?? null;
+  if (labels && expectedType) {
+    const typeLabels = labels.filter((l) => l.startsWith("type:"));
+    if (typeLabels.length !== 1) {
+      add(
+        "labels",
+        `Needs exactly one type label, "${expectedType}" for a ${chosen} issue; has ${typeLabels.length}.`,
+      );
+    } else if (typeLabels[0] !== expectedType) {
+      add("labels", `A ${chosen} issue takes the "${expectedType}" label, not "${typeLabels[0]}".`);
+    }
+  }
+
   // Every heading of the template, in order, each with real content.
   const sections = sectionsOf(body);
   let cursor = -1;

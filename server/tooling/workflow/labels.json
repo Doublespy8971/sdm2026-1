@@ -1,0 +1,125 @@
+{
+  "$comment": "Every label in the repo. `pnpm labels:sync` makes GitHub match this file (dry run by default, --apply to change). `renamedFrom` renames an old label instead of creating a new one, so its issues and PRs keep it. `remove` lists labels to delete. See \"Labels\" in CLAUDE.md.",
+  "groups": [
+    {
+      "group": "team",
+      "rule": "exactly one on every issue and PR",
+      "labels": [
+        { "name": "team-1", "color": "1f77b4", "description": "Owned by Team 1" },
+        { "name": "team-2", "color": "2ca02c", "description": "Owned by Team 2" },
+        { "name": "team-3", "color": "d62728", "description": "Owned by Team 3" },
+        { "name": "team-4", "color": "9467bd", "description": "Owned by Team 4" },
+        {
+          "name": "platform",
+          "color": "5319e7",
+          "description": "Shared platform in server/: stack, infra, CI, tooling"
+        },
+        { "name": "team-instructor", "color": "6e7781", "description": "Owned by the instructor team" }
+      ]
+    },
+    {
+      "group": "type",
+      "rule": "exactly one; set by the issue template, and on PRs by the labeller",
+      "labels": [
+        {
+          "name": "type:feature",
+          "color": "a2eeef",
+          "description": "New behaviour or capability",
+          "renamedFrom": ["enhancement"]
+        },
+        {
+          "name": "type:bug",
+          "color": "d73a4a",
+          "description": "Something is broken or behaves wrongly",
+          "renamedFrom": ["bug"]
+        },
+        {
+          "name": "type:docs",
+          "color": "0075ca",
+          "description": "Documentation, rules or guides",
+          "renamedFrom": ["documentation"]
+        },
+        { "name": "type:chore", "color": "c5def5", "description": "Tooling, CI, dependencies or tests" },
+        {
+          "name": "type:refactor",
+          "color": "bfd4f2",
+          "description": "Restructure without changing behaviour"
+        },
+        { "name": "type:release", "color": "0e8a16", "description": "Release main to prod" },
+        {
+          "name": "type:sync",
+          "color": "c2e0c6",
+          "description": "Bring a feature/team-N branch up to date with main"
+        }
+      ]
+    },
+    {
+      "group": "size",
+      "rule": "exactly one on every PR; set by the labeller from the diff",
+      "labels": [
+        { "name": "size:tiny", "color": "ededed", "description": "At most 20 changed lines and 2 files" },
+        { "name": "size:small", "color": "d4d4d4", "description": "At most 150 changed lines" },
+        { "name": "size:medium", "color": "b0b0b0", "description": "At most 400 changed lines" },
+        {
+          "name": "size:large",
+          "color": "8c8c8c",
+          "description": "Over 400 lines, or changes the shared contract, dependencies or CI"
+        }
+      ]
+    },
+    {
+      "group": "priority",
+      "rule": "at most one, on bugs",
+      "labels": [
+        { "name": "priority:p0", "color": "b60205", "description": "Blocks the demo or every team: fix now" },
+        { "name": "priority:p1", "color": "e99695", "description": "Important: fix soon" },
+        { "name": "priority:p2", "color": "f9d0c4", "description": "Minor: fix when there is time" }
+      ]
+    },
+    {
+      "group": "status",
+      "rule": "on open PRs only; set by the labeller every 10 minutes. At most one waiting-on.* label",
+      "labels": [
+        {
+          "name": "stackpile",
+          "color": "fbca04",
+          "description": "Stacked on another PR: its base is not main, prod or a feature/team-N branch"
+        },
+        {
+          "name": "waiting-on.author",
+          "color": "d93f0b",
+          "description": "Changes requested, an unresolved review thread, or a draft"
+        },
+        {
+          "name": "waiting-on.review",
+          "color": "fef2c0",
+          "description": "Needs an approving review from someone other than the author"
+        },
+        {
+          "name": "waiting-on.merge",
+          "color": "0e8a16",
+          "description": "Approved with nothing open: ready to merge"
+        }
+      ]
+    },
+    {
+      "group": "flag",
+      "rule": "optional, set by people",
+      "labels": [
+        {
+          "name": "cross-team",
+          "color": "f7c6c7",
+          "description": "Changes another team's files; the issue explains why"
+        },
+        {
+          "name": "blocked",
+          "color": "000000",
+          "description": "Waiting on something outside this issue or PR"
+        },
+        { "name": "duplicate", "color": "cfd3d7", "description": "Already covered by another issue or PR" },
+        { "name": "wontfix", "color": "ffffff", "description": "Will not be worked on" }
+      ]
+    }
+  ],
+  "remove": ["accessibility", "good first issue", "help wanted", "invalid", "question"]
+}
