@@ -64,6 +64,8 @@ Why these rules exist:
 | `pnpm typecheck` | TypeScript across every package |
 | `pnpm test` | Vitest across every package |
 | `pnpm build` | Build every game's client |
+| `pnpm workflow:classify --kind issue\|pr\|commit` | Decide the type, team label, template and base branch for a change (`--json` for scripts; see "Templates, classification and checks" in `CLAUDE.md`) |
+| `pnpm check:issue` / `pnpm check:pr` / `pnpm check:commit` | Check an issue, a pull request or commit messages against their template or format |
 
 Run `pnpm lint && pnpm typecheck && pnpm test` before opening a PR.
 
@@ -74,3 +76,5 @@ Every pull request and every push to `main` runs the **CI** checks (`.github/wor
 - It covers every package in the workspace, so a platform PR only passes when every team's game still builds.
 - `--frozen-lockfile` fails when `pnpm-lock.yaml` is out of date: run `pnpm install` and commit the lockfile.
 - Actions are pinned to commit SHAs. Update them through a platform PR.
+
+A second workflow, **Workflow checks** (`.github/workflows/workflow-checks.yml`), runs `pnpm check:pr` and `pnpm check:commit` on every pull request: title, team label, branch and base names, template headings, linked issue, ticked checklist and the commit message format. It reruns when the title or description is edited, so fix the text and the check turns green.

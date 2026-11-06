@@ -28,6 +28,7 @@ pnpm dev
 ```
 
 - `pnpm install` stops with a clear message if your Node version is wrong.
+- Run `git config commit.template .gitmessage` once. Your commit editor then starts with the required message format (`type(scope): subject` plus `Refs #<issue>`), which `pnpm check:commit` and CI check.
 - `pnpm check:setup` checks your machine (Node and pnpm versions, dependencies, line endings, file names, free ports) and tells you how to fix anything that fails.
 - `pnpm dev` runs the template game: open <http://localhost:5173>. You should see **Server OK**. Stop it with Ctrl+C.
 

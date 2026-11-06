@@ -16,7 +16,11 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "pnpm -r typecheck",
-    "check:setup": "node server/tooling/check-setup.mjs"
+    "check:setup": "node server/tooling/check-setup.mjs",
+    "workflow:classify": "node server/tooling/workflow/classify.mjs",
+    "check:issue": "node server/tooling/workflow/check-issue.mjs",
+    "check:pr": "node server/tooling/workflow/check-pr.mjs",
+    "check:commit": "node server/tooling/workflow/check-commit.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",
