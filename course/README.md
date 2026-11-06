@@ -23,6 +23,8 @@ We track progress with GitHub issues and pull requests.
    - Describe the **goal** and the **done when** criteria (a short checklist).
    - Add the `team-N` label and assign it to whoever works on it.
 2. **Every pull request closes an issue.** Put `Closes #<issue number>` in the PR description, so the issue is closed automatically when the PR is merged.
+   - New PRs start from the [pull request template](../.github/pull_request_template.md). Fill in every section (linked issue, team, summary, how to test, screenshots) and tick the checklist. Don't delete or rename the headings: the evaluation reads them.
+   - The full workflow (branch names, labels, reviews) is in [AGENTS.md](../AGENTS.md).
 3. **Daily summary.** At the end of each day, every team opens one issue titled `[team-N] Day 1 summary` (or `Day 2 summary`) with:
    - what was done,
    - what got stuck,
