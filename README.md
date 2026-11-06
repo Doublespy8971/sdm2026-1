@@ -8,10 +8,12 @@ Hackathon repository: each team builds a multiplayer browser game on a shared st
 | Multiplayer server | Colyseus 0.18 on Node.js | `server/` |
 | Hosting | Railway | see [server/ARCHITECTURE.md](server/ARCHITECTURE.md) |
 
-Branches: `team-N/<issue>-…` → `feature/team-N` → `dev` → `prod`.
+## Branches
+
+`main` is the cutting edge and `prod` is the release: work branches (`team-N/<issue>-…`) are merged into `main`, and `main` is merged into `prod` to release. The details are in [AGENTS.md](AGENTS.md#branches).
 
 ## Read next
 
 - [course/README.md](course/README.md): how the hackathon runs and how work is evaluated
-- [AGENTS.md](AGENTS.md): the workflow every agent and person follows, including the branch model
+- [AGENTS.md](AGENTS.md): the workflow every agent and person follows
 - [server/AGENTS.md](server/AGENTS.md): how a game uses the shared platform

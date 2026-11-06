@@ -12,8 +12,6 @@ During the hackathon we use this Google Meet room:
 
 - **Everything in English:** code, comments, commit messages, issues, pull requests and documentation.
 - **AI first:** use AI agents for as much of the work as possible.
-- **Shared stack:** frontends are **Vite + TypeScript**, multiplayer runs on Colyseus and everything is hosted on Railway.
-- **Branches:** work goes `team-N/<issue>-…` → `feature/team-N` → `dev` → `prod`. The details are in [AGENTS.md](../AGENTS.md#branches).
 - **Your own folder:** each team works only in its own folder under `games/` (`games/team-1/`, `games/team-2/`, ...).
 
 ## Tracking progress
