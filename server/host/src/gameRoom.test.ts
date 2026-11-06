@@ -39,6 +39,7 @@ beforeAll(async () => {
         gs.define("crash", createGameRoom(crashing, deps("development")));
       },
     }),
+    2601,
   );
 });
 afterAll(() => colyseus.shutdown());

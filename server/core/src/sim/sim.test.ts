@@ -22,11 +22,12 @@ describe("RoomSettingsSchema", () => {
     expect(RoomSettingsSchema.safeParse({ ...valid, tickRate: 5 }).success).toBe(false);
   });
 
-  it("accepts the template config once patchRate and reconnectSeconds are added", () => {
+  it("accepts the template config, and rejects it without patchRate", () => {
     const file = JSON.parse(
       readFileSync(new URL("../../../template/config/game.json", import.meta.url), "utf8"),
     );
-    expect(RoomSettingsSchema.safeParse(file).success).toBe(false);
-    expect(RoomSettingsSchema.safeParse({ ...file, patchRate: 20, reconnectSeconds: 20 }).success).toBe(true);
+    expect(RoomSettingsSchema.safeParse(file).success).toBe(true);
+    const { patchRate: _dropped, ...withoutPatchRate } = file;
+    expect(RoomSettingsSchema.safeParse(withoutPatchRate).success).toBe(false);
   });
 });
