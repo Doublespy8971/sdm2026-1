@@ -12,6 +12,7 @@
 //   --type <type>        decide the type yourself (feature, bug, docs, chore, refactor, release)
 //   --label <label>      decide the team label yourself
 //   --branch <name>      branch name (defaults to the current branch)
+//   --target <branch>    with --kind pr: the branch the PR targets (tells a release from a sync when the head is main)
 //   --json               machine-readable output
 //
 // Exit codes: 0 classified, 1 undecided or invalid, 2 usage error, 3 environment problem (git).
@@ -46,7 +47,7 @@ function finish(result, code) {
 const kind = flags.kind;
 if (!["issue", "pr", "commit"].includes(kind)) {
   console.error(
-    "usage: pnpm workflow:classify --kind issue|pr|commit [--staged | --base <ref> [--head <ref>]] [--title <text>] [--type <type>] [--label <label>] [--json]",
+    "usage: pnpm workflow:classify --kind issue|pr|commit [--staged | --base <ref> [--head <ref>]] [--title <text>] [--type <type>] [--label <label>] [--target <branch>] [--json]",
   );
   process.exit(EXIT.usage);
 }
@@ -88,6 +89,7 @@ const result = classifyChange({
   branch,
   type: typeof flags.type === "string" ? flags.type : null,
   label: typeof flags.label === "string" ? flags.label : null,
+  target: typeof flags.target === "string" ? flags.target : null,
 });
 
 if (!result.undecided && result.ok) {

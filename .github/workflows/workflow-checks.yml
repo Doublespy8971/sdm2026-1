@@ -1,0 +1,40 @@
+# Checks that every pull request follows the workflow: [label] title, one team label, branch and base
+# branch names, template headings filled, linked issue, ticked checklist (pnpm check:pr, issue #42).
+# Separate from ci.yml so a template problem is reported on its own. Owner: platform team.
+name: Workflow checks
+
+on:
+  pull_request:
+    # "edited" re-runs the check when the title or description is fixed.
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+# A newer run for the same PR replaces the one still in progress.
+concurrency:
+  group: workflow-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pull-request:
+    name: pull request follows the template
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Full history, so the check can compare the PR's files with its base branch.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      # The script has no dependencies, so there is no install step. It reads the PR from the event
+      # file and gets the branch names through env vars, so a title or body can never run as a command.
+      - name: Check the pull request
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node server/tooling/workflow/check-pr.mjs --event "$GITHUB_EVENT_PATH" --git-base "origin/$BASE_REF" --git-head "$HEAD_SHA"

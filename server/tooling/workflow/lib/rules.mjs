@@ -39,18 +39,26 @@ export function branchLabel(branch, teamLabels) {
 }
 
 /**
- * The branch a pull request from `branch` must target (see "Branches" in CLAUDE.md).
+ * The branch a pull request from `branch` must target (see "Branches" in CLAUDE.md). A PR whose head is
+ * `main` is either a release (into `prod`) or a sync (into `feature/team-N`), so `target` decides.
  * @param {string | null | undefined} branch
  * @param {string[]} teamLabels
+ * @param {string | null} [target] the base branch the PR actually targets
  */
-export function baseFor(branch, teamLabels) {
+export function baseFor(branch, teamLabels, target = null) {
   if (!branch) return null;
-  if (branch === "main") return "prod";
-  const feature = /^feature\/(team-[1-4])$/.exec(branch);
-  if (feature) return "main";
+  if (branch === "main") return target;
+  if (/^feature\/team-[1-4]$/.test(branch)) return "main";
   const label = branchLabel(branch, teamLabels);
   if (!label) return null;
   return /^team-[1-4]$/.test(label) ? `feature/${label}` : "main";
+}
+
+/** What a PR from `main` is, from the branch it targets: "release", "sync" or null. @param {string | null} target */
+export function kindOfMainPr(target) {
+  if (target === "prod") return "release";
+  if (target && /^feature\/team-[1-4]$/.test(target)) return "sync";
+  return null;
 }
 
 /**
@@ -63,6 +71,7 @@ export function baseFor(branch, teamLabels) {
  *   branch?: string | null,
  *   type?: string | null,
  *   label?: string | null,
+ *   target?: string | null,
  * }} input
  */
 export function classifyChange(input) {
@@ -94,7 +103,15 @@ export function classifyChange(input) {
       rule: "commit-prefix",
     };
   } else if (kind === "pr" && branch === "main") {
-    decision = { type: "release", commitType: null, rule: "release-branch" };
+    const mainKind = kindOfMainPr(input.target ?? null);
+    if (!mainKind) {
+      return undecided(
+        ["release", "sync"],
+        "A PR from main is a release or a sync, and that depends on its base branch.",
+        "--target prod|feature/team-N",
+      );
+    }
+    decision = { type: mainKind, commitType: null, rule: "main-branch" };
   }
 
   // 2-6. Rules over the changed files.
@@ -171,20 +188,20 @@ export function classifyChange(input) {
     label,
     labelSource,
     scope: label,
-    base: kind === "pr" ? baseFor(branch, config.teamLabels) : null,
+    base: kind === "pr" ? baseFor(branch, config.teamLabels, input.target ?? null) : null,
     owners,
     warnings,
     errors,
   };
 }
 
-/** @param {string[]} candidates @param {string} reason */
-function undecided(candidates, reason) {
+/** @param {string[]} candidates @param {string} reason @param {string} [pass] */
+function undecided(candidates, reason, pass = `--type <${candidates.join("|")}>`) {
   return {
     ok: false,
     undecided: true,
     candidates,
-    errors: [`${reason} Pass --type <${candidates.join("|")}>.`],
+    errors: [`${reason} Pass ${pass}.`],
     warnings: [],
   };
 }

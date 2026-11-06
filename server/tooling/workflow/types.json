@@ -37,6 +37,12 @@
       "prTemplate": ".github/PULL_REQUEST_TEMPLATE/release.md",
       "commitTypes": [],
       "githubLabel": null
+    },
+    "sync": {
+      "issueTemplate": null,
+      "prTemplate": ".github/PULL_REQUEST_TEMPLATE/sync.md",
+      "commitTypes": [],
+      "githubLabel": null
     }
   },
   "commitPrefixToType": {
@@ -52,8 +58,14 @@
   },
   "docsPaths": ["course/**", "**/*.md", "docs/**"],
   "choreRules": [
-    { "commitType": "ci", "paths": [".github/**"] },
-    { "commitType": "build", "paths": ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"] },
+    {
+      "commitType": "ci",
+      "paths": [".github/**"]
+    },
+    {
+      "commitType": "build",
+      "paths": ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml"]
+    },
     {
       "commitType": "chore",
       "paths": [

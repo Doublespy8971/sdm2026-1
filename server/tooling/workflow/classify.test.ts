@@ -130,14 +130,22 @@ describe("classifyChange: explicit decisions", () => {
     expect(r).toMatchObject({ type: "chore", commitType: "test" });
   });
 
-  it("a PR from main is a release", () => {
-    const r = classify({
-      files: files("games/team-1/src/a.ts"),
-      kind: "pr",
-      branch: "main",
-      label: "platform",
-    });
-    expect(r).toMatchObject({ type: "release", rule: "release-branch", base: "prod" });
+  const mainPr = { files: files("games/team-1/src/a.ts"), kind: "pr", branch: "main", label: "platform" };
+
+  it("a PR from main into prod is a release", () => {
+    const r = classify({ ...mainPr, target: "prod" });
+    expect(r).toMatchObject({ type: "release", rule: "main-branch", base: "prod" });
+  });
+
+  it("a PR from main into feature/team-N is a sync", () => {
+    const r = classify({ ...mainPr, target: "feature/team-1" });
+    expect(r).toMatchObject({ type: "sync", base: "feature/team-1" });
+  });
+
+  it("a PR from main without a target is undecided between release and sync", () => {
+    const r = classify(mainPr);
+    expect(r).toMatchObject({ ok: false, undecided: true, candidates: ["release", "sync"] });
+    expect((r.errors as string[])[0]).toContain("--target");
   });
 });
 
@@ -188,10 +196,14 @@ describe("branches", () => {
     ["platform/8-ci", "main"],
     ["team-instructor/20-rules", "main"],
     ["feature/team-3", "main"],
-    ["main", "prod"],
     ["random-branch", null],
   ])("a PR from %s targets %s", (branch, base) => {
     expect(baseFor(branch, labels)).toBe(base);
+  });
+
+  it("a PR from main targets whatever --target says", () => {
+    expect(baseFor("main", labels, "prod")).toBe("prod");
+    expect(baseFor("main", labels)).toBeNull();
   });
 
   it("reads the team label from a branch name", () => {
