@@ -2,12 +2,11 @@
 name: Bug
 about: Something that is broken or behaves wrongly
 title: "[team-label] "
-labels: type:bug
 ---
 
 <!--
 Title: [<team-label>] Short description of the problem, e.g. "[team-2] Player can walk through walls".
-Add exactly one team label (team-1..4, platform or team-instructor) plus its type label (type:bug, added by this template).
+Add exactly one team label (team-1..4, platform or team-instructor).
 Fill in every section. Don't delete or rename the headings; the checks and the evaluation read them.
 -->
 

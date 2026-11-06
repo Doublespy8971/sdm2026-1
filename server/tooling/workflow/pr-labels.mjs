@@ -1,28 +1,26 @@
-// `pnpm labels:prs`: keeps every pull request's status, type and size labels up to date (see "Labels"
+// `pnpm labels:prs`: keeps every pull request's status labels up to date: stackpile and one waiting-on.*
+// label (see "Labels"
 // in CLAUDE.md). Run every 10 minutes by .github/workflows/pr-labels.yml, and on PR and review events.
 //
 //   pnpm labels:prs                 update every open PR, and clear status labels from closed ones
 //   pnpm labels:prs --number 61     one PR only
-//   pnpm labels:prs --all           also give closed and merged PRs their type and size (backfill)
 //   --dry-run                       print the changes without making them
 //   --json                          machine-readable output
 //
 // Reads PRs through the GitHub CLI (GH_TOKEN in CI). Never checks out or runs a PR's code.
 // Exit codes: 0 done, 2 usage error, 3 environment problem (gh, missing labels: run pnpm labels:sync --apply).
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { EXIT, parseArgs } from "./lib/args.mjs";
 import { environmentError, root } from "./lib/context.mjs";
-import { allLabels, labelsOf, loadLabels } from "./lib/labels.mjs";
+import { labelsOf, loadLabels } from "./lib/labels.mjs";
 import { labelChanges } from "./lib/pr-labels.mjs";
-import { loadTypes } from "./lib/types.mjs";
 
-const { flags } = parseArgs(process.argv.slice(2), { boolean: ["dry-run", "json", "all"] });
+const { flags } = parseArgs(process.argv.slice(2), { boolean: ["dry-run", "json"] });
 const dryRun = flags["dry-run"] === true;
 const json = flags.json === true;
 const single = typeof flags.number === "string" ? Number(flags.number) : null;
 if (single !== null && !Number.isInteger(single)) {
-  console.error("usage: pnpm labels:prs [--number <n> | --all] [--dry-run] [--json]");
+  console.error("usage: pnpm labels:prs [--number <n>] [--dry-run] [--json]");
   process.exit(EXIT.usage);
 }
 
@@ -48,29 +46,22 @@ const repo =
   process.env.GITHUB_REPOSITORY ?? JSON.parse(gh(["repo", "view", "--json", "nameWithOwner"])).nameWithOwner;
 const [owner, name] = repo.split("/");
 
-const FIELDS = `number state isDraft title body baseRefName headRefName additions deletions
+const FIELDS = `number state isDraft baseRefName
   author { login }
   labels(first: 50) { nodes { name } }
   reviews(last: 100) { nodes { state author { login } } }
-  reviewThreads(first: 100) { nodes { isResolved } }
-  files(first: 100) { nodes { path } }`;
+  reviewThreads(first: 100) { nodes { isResolved } }`;
 
 /** @param {any} node @returns {import("./lib/pr-labels.mjs").PullRequest} */
 const toPr = (node) => ({
   number: node.number,
   state: node.state,
   isDraft: node.isDraft,
-  title: node.title,
-  body: node.body ?? "",
   author: node.author?.login ?? null,
   base: node.baseRefName,
-  head: node.headRefName,
   labels: node.labels.nodes.map((l) => l.name),
   reviews: node.reviews.nodes.map((r) => ({ author: r.author?.login ?? null, state: r.state })),
   unresolvedThreads: node.reviewThreads.nodes.filter((t) => !t.isResolved).length,
-  additions: node.additions,
-  deletions: node.deletions,
-  files: node.files?.nodes.map((f) => f.path) ?? [],
 });
 
 /** @param {string} query GraphQL with $owner and $name @param {string[]} extra */
@@ -113,28 +104,13 @@ function getPr(number) {
   return toPr(node);
 }
 
-const scheme = loadLabels(root);
-const types = loadTypes(root);
-const config = {
-  status: labelsOf(scheme, "status"),
-  sizes: labelsOf(scheme, "size"),
-  types: types.types,
-  commitPrefixToType: types.commitPrefixToType,
-  templates: Object.fromEntries(
-    Object.entries(types.types)
-      .filter(([, t]) => t.prTemplate)
-      .map(([type, t]) => [type, readFileSync(`${root}/${t.prTemplate}`, "utf8")]),
-  ),
-};
+const statusLabels = labelsOf(loadLabels(root), "status");
 
-// Every label the labeller sets must exist; creating them is labels:sync's job.
+// The labels must exist; creating them is labels:sync's job.
 const existing = new Set(
   JSON.parse(gh(["label", "list", "--limit", "500", "--json", "name"])).map((l) => l.name),
 );
-const missing = allLabels(scheme)
-  .map((l) => l.name)
-  .filter((l) => [...config.status, ...config.sizes].includes(l) || l.startsWith("type:"))
-  .filter((l) => !existing.has(l));
+const missing = statusLabels.filter((l) => !existing.has(l));
 if (missing.length > 0) {
   const message = `labels missing on GitHub: ${missing.join(", ")}. Run: pnpm labels:sync --apply`;
   if (!dryRun) environmentError(message);
@@ -145,18 +121,14 @@ let prs;
 if (single !== null) {
   prs = [getPr(single)];
 } else {
-  const closed = listPrs("[CLOSED, MERGED]");
-  // Closed PRs only need work while they still carry a status label, unless backfilling.
-  const statusSet = new Set(config.status);
-  prs = [
-    ...listPrs("[OPEN]"),
-    ...(flags.all === true ? closed : closed.filter((p) => p.labels.some((l) => statusSet.has(l)))),
-  ];
+  // Closed PRs only need work while they still carry a status label.
+  const closed = listPrs("[CLOSED, MERGED]").filter((p) => p.labels.some((l) => statusLabels.includes(l)));
+  prs = [...listPrs("[OPEN]"), ...closed];
 }
 
 const results = [];
 for (const pr of prs) {
-  const { add, remove } = labelChanges(pr, config);
+  const { add, remove } = labelChanges(pr, statusLabels);
   if (add.length === 0 && remove.length === 0) continue;
   results.push({ number: pr.number, add, remove });
   if (dryRun) continue;

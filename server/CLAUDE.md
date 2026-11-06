@@ -81,7 +81,7 @@ Why these rules exist:
 | `pnpm preflight` | Everything a branch must pass before it becomes a PR (see "Preflight" below) |
 | `pnpm preflight:quick` | Lint, typecheck and ownership in a few seconds. Agents run it after every change |
 | `pnpm labels:sync` | Make the repo's GitHub labels match `server/tooling/workflow/labels.json` (dry run; `--apply` to change) |
-| `pnpm labels:prs` | Update every PR's status, type and size labels (`--dry-run`, `--number <n>`, `--all` to backfill closed PRs). The "PR labels" workflow runs it every 10 minutes |
+| `pnpm labels:prs` | Update every PR's `stackpile` and `waiting-on.*` labels (`--dry-run`, `--number <n>`). The "PR labels" workflow runs it every 10 minutes |
 
 Run `pnpm preflight` before opening a PR. It must pass.
 

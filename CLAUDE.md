@@ -112,7 +112,6 @@ Every change goes through the same path: **issue → branch → commits → pull
 
 - Open an issue before writing any code. No issue, no branch, no PR.
 - The issue must carry exactly one team label: `team-1`, `team-2`, `team-3`, `team-4`, `platform` or `team-instructor`. The label says which team owns the work.
-- It also carries exactly one type label (`type:feature`, `type:bug`, ...); the issue template adds it. See [Labels](#labels).
 - The title starts with the team name: `[team-2] Add login page`.
 - Describe what is changing and why, and what "done" looks like.
 
@@ -170,18 +169,14 @@ Issues, pull requests and commits follow templates. **A script chooses the type,
 
 ## Labels
 
-Every label is defined in `server/tooling/workflow/labels.json`; `pnpm labels:sync` makes GitHub match it (dry run by default, `--apply` to change). Don't create labels by hand.
+The repo has only two kinds of labels; there are no type, size or priority labels. Every label is defined in `server/tooling/workflow/labels.json`, and `pnpm labels:sync` makes GitHub match it (dry run by default, `--apply` to change). Don't create labels by hand.
 
-| Group | Labels | Rule | Set by |
-|---|---|---|---|
-| Team | `team-1` … `team-4`, `platform`, `team-instructor` | exactly one on every issue and PR | you |
-| Type | `type:feature`, `type:bug`, `type:docs`, `type:chore`, `type:refactor`, `type:release`, `type:sync` | exactly one | the issue template; on PRs, the labeller (from the title's type, or the template the body follows) |
-| Size | `size:tiny` (≤ 20 lines, ≤ 2 files), `size:small` (≤ 150), `size:medium` (≤ 400), `size:large` | exactly one on every PR | the labeller, from the diff. Changes to the shared contract, dependencies or CI are always large |
-| Priority | `priority:p0`, `priority:p1`, `priority:p2` | at most one, on bugs | the reporter or triage |
-| Status | `stackpile`, `waiting-on.author`, `waiting-on.review`, `waiting-on.merge` | on open PRs only | the labeller |
-| Flags | `cross-team`, `blocked`, `duplicate`, `wontfix` | optional | you |
+| Labels | Rule | Set by |
+|---|---|---|
+| `team-1` … `team-4`, `platform`, `team-instructor` | exactly one on every issue and PR | you |
+| `stackpile`, `waiting-on.author`, `waiting-on.review`, `waiting-on.merge` | on open PRs only | the labeller |
 
-The **labeller** (`pnpm labels:prs`, the "PR labels" workflow) runs every 10 minutes and whenever a PR or review changes. It only touches the type, size and status labels, and removes the status labels when a PR is closed. The status labels mean:
+The **labeller** (`pnpm labels:prs`, the "PR labels" workflow) runs every 10 minutes and whenever a PR or review changes. It only touches these four labels, and removes them when a PR is closed or merged:
 
 - `stackpile`: the PR is stacked on another PR (its base isn't `main`, `prod` or a `feature/team-N` branch). It merges after the PR below it.
 - Exactly one waiting label, checked in this order:

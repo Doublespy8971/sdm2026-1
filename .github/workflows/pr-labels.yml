@@ -1,5 +1,5 @@
-# Keeps every pull request's status, type and size labels up to date (pnpm labels:prs, issues #97/#98):
-# stackpile, waiting-on.author / .review / .merge, type:*, size:*. See "Labels" in CLAUDE.md.
+# Keeps every pull request's status labels up to date (pnpm labels:prs, issues #97/#98):
+# stackpile and one of waiting-on.author / .review / .merge. See "Labels" in CLAUDE.md.
 #
 # - Every 10 minutes (GitHub may delay scheduled runs by a few minutes), and on demand: all PRs.
 # - On PR and review events: just that PR, so labels change within a minute.
