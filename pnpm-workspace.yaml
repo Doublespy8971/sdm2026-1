@@ -1,0 +1,6 @@
+packages:
+  - server/core
+  - server/host
+  - server/template
+  - server/tooling
+  - games/team-*

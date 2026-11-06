@@ -1,0 +1,9 @@
+{
+  "name": "@sdm/tooling",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared TypeScript config for every game. Extend tsconfig.base.json from games/<team>/tsconfig.json.",
+  "files": [
+    "tsconfig.base.json"
+  ]
+}
