@@ -10,6 +10,7 @@ import { ownersOf } from "./ownership.mjs";
  *   teamLabels: string[],
  *   types: Record<string, { commitTypes: string[] }>,
  *   commitPrefixToType: Record<string, string>,
+ *   prefixPrecedence: string[],
  *   docsPaths: string[],
  *   choreRules: { commitType: string, paths: string[] }[],
  *   testPaths: string[],
@@ -26,6 +27,28 @@ export function parsePrefix(text) {
   if (!text) return null;
   const m = /^(?:\[[^\]]+\]\s*)?([a-z]+)(?:\(([^)]*)\))?!?:\s/.exec(text.trim());
   return m ? { prefix: m[1], scope: m[2] ?? null } : null;
+}
+
+/**
+ * The subject that best describes a whole branch: of all its commits' Conventional-Commit prefixes,
+ * the one that comes first in `precedence` (types.json "prefixPrecedence", e.g. feat before docs).
+ * A feature branch whose last commit is "docs: ..." is still a feature. Subjects without a known
+ * prefix are ignored; returns null when none has one.
+ * @param {string[]} subjects
+ * @param {string[]} precedence
+ */
+export function strongestSubject(subjects, precedence) {
+  let best = null;
+  let bestRank = Number.POSITIVE_INFINITY;
+  for (const subject of subjects) {
+    const prefix = parsePrefix(subject)?.prefix;
+    const rank = prefix ? precedence.indexOf(prefix) : -1;
+    if (rank !== -1 && rank < bestRank) {
+      best = subject;
+      bestRank = rank;
+    }
+  }
+  return best;
 }
 
 /**

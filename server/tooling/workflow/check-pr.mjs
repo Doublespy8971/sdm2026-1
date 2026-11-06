@@ -16,9 +16,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { EXIT, parseArgs } from "./lib/args.mjs";
 import { checkPr } from "./lib/check-pr.mjs";
-import { changedFiles, newestSubject } from "./lib/git.mjs";
+import { branchSubjects, changedFiles } from "./lib/git.mjs";
 import { loadOwnership } from "./lib/ownership.mjs";
-import { classifyChange } from "./lib/rules.mjs";
+import { classifyChange, strongestSubject } from "./lib/rules.mjs";
 import { loadTypes } from "./lib/types.mjs";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -117,7 +117,7 @@ if (str("git-base") && pr.head !== "main" && !/^feature\/team-[1-4]$/.test(pr.he
       config,
       ownership: loadOwnership(root),
       kind: "pr",
-      hint: newestSubject(root, head),
+      hint: strongestSubject(branchSubjects(root, str("git-base"), head), config.prefixPrecedence),
       branch: pr.head,
       target: pr.base,
     });

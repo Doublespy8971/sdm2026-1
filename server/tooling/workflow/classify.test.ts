@@ -1,6 +1,7 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { globToRegExp } from "./lib/glob.mjs";
-import { baseFor, branchLabel, classifyChange, parsePrefix } from "./lib/rules.mjs";
+import { baseFor, branchLabel, classifyChange, parsePrefix, strongestSubject } from "./lib/rules.mjs";
 
 const config = {
   teamLabels: ["team-1", "team-2", "team-3", "team-4", "platform", "team-instructor"],
@@ -23,6 +24,7 @@ const config = {
     test: "chore",
     perf: "chore",
   },
+  prefixPrecedence: ["feat", "fix", "refactor", "perf", "docs", "test", "build", "ci", "chore"],
   docsPaths: ["course/**", "**/*.md", "docs/**"],
   choreRules: [
     { commitType: "ci", paths: [".github/**"] },
@@ -221,6 +223,50 @@ describe("parsePrefix", () => {
     ["Fix: capitalised is not a prefix", null],
   ])("%s", (text, expected) => {
     expect(parsePrefix(text)).toEqual(expected);
+  });
+});
+
+describe("strongestSubject", () => {
+  const { prefixPrecedence } = config;
+
+  it("types.json ranks every commit type, with feat first", () => {
+    const real = JSON.parse(readFileSync(new URL("./types.json", import.meta.url), "utf8"));
+    expect([...real.prefixPrecedence].sort()).toEqual(Object.keys(real.commitPrefixToType).sort());
+    expect(real.prefixPrecedence[0]).toBe("feat");
+  });
+
+  it("picks the most significant prefix on the branch, whatever the commit order", () => {
+    const feature = ["docs(platform): document checks", "feat(platform): add checks", "fix(platform): typo"];
+    expect(strongestSubject(feature, prefixPrecedence)).toBe("feat(platform): add checks");
+    expect(strongestSubject([...feature].reverse(), prefixPrecedence)).toBe("feat(platform): add checks");
+    expect(strongestSubject(["docs: a", "fix: b", "refactor: c"], prefixPrecedence)).toBe("fix: b");
+  });
+
+  it("keeps a docs-only branch as docs", () => {
+    expect(strongestSubject(["docs: a", "docs(team-2): b"], prefixPrecedence)).toBe("docs: a");
+  });
+
+  it("ignores subjects without a known prefix, and returns null when none has one", () => {
+    expect(strongestSubject(["Add game", "wip: try", "chore: bump"], prefixPrecedence)).toBe("chore: bump");
+    expect(strongestSubject(["Add game", "Update readme"], prefixPrecedence)).toBeNull();
+    expect(strongestSubject([], prefixPrecedence)).toBeNull();
+  });
+
+  it("feeds classifyChange, so a feature branch ending in a docs commit is a feature", () => {
+    const hint = strongestSubject(["feat(platform): add x", "docs(platform): document x"], prefixPrecedence);
+    const result = classifyChange({
+      files: [
+        { status: "A", path: "server/tooling/workflow/x.mjs" },
+        { status: "M", path: "server/CLAUDE.md" },
+      ],
+      config,
+      ownership,
+      kind: "pr",
+      hint,
+      branch: "platform/72-x",
+    });
+    expect(result.type).toBe("feature");
+    expect(result.rule).toBe("commit-prefix");
   });
 });
 
