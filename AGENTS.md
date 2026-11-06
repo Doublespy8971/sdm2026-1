@@ -15,6 +15,40 @@ These rules apply to every agent (and every human) working in this repository. T
 
 Work inside your own team's folder. Changes to another team's folder or to the shared folders need an issue that says why, and a review from someone on the owning team.
 
+## Tech stack
+
+Everyone uses the same stack. Don't introduce alternatives without an issue that explains why.
+
+- **Frontend:** **Vite + TypeScript**, one app per team in `games/team-N/` (start from `server/template/`).
+- **Multiplayer:** Colyseus 0.18 on the server, `@colyseus/sdk` in the clients. Colyseus 0.18 changed many APIs, so read [server/AGENTS.md](server/AGENTS.md) before writing Colyseus code.
+- **Hosting:** Railway.
+- **Language:** TypeScript everywhere. The commands for install, lint, typecheck and tests are in [server/AGENTS.md](server/AGENTS.md).
+
+## Branches
+
+Code moves to production through three levels. Each team has its own integration branch, so one team's unfinished work never blocks another.
+
+| Branch | Purpose | Deploys to | Receives pull requests from |
+|--------|---------|------------|-----------------------------|
+| `prod` | Production | Railway production | `dev` |
+| `dev` | Integration of all teams | Railway dev | `feature/team-N`, `platform/*` branches |
+| `feature/team-N` | Team N's integration branch | not deployed | Team N's work branches (`team-N/<issue>-…`) |
+| `main` | Default branch: course docs and workflow files (`course/`, `AGENTS.md`, `.github/`) | not deployed | work branches that only change those files |
+
+```
+team-N/<issue>-<description>  →  feature/team-N  →  dev  →  prod
+        (work branch)           (team review)     (CI must be green)   (release)
+```
+
+1. **Work branch → `feature/team-N`.** One pull request per issue, reviewed by a teammate.
+2. **`feature/team-N` → `dev`.** Only when CI is green for the feature branch. CI/CD for `dev` is owned by P1; its checks and the Railway deploy are described in [server/ARCHITECTURE.md](server/ARCHITECTURE.md) as they are added.
+3. **`dev` → `prod`.** A release pull request, opened when everything on `dev` works on the Railway dev environment.
+4. **Stay current.** After your feature branch has been merged into `dev`, merge `dev` back into `feature/team-N` before starting the next piece of work.
+
+Platform work (`server/`, CI, Railway) uses `platform/<issue>-<description>` branches and opens pull requests straight into `dev`.
+
+Branch protection isn't set up yet, so these rules are followed by convention. Follow them as if they were enforced.
+
 ## Workflow
 
 Every change goes through the same path: **issue → branch → commits → pull request → review → merge.** No shortcuts.
@@ -28,8 +62,8 @@ Every change goes through the same path: **issue → branch → commits → pull
 
 ### 2. Branch
 
-- Never commit directly to `main`. `main` only changes through merged pull requests.
-- Branch from an up-to-date `main`.
+- Never commit directly to `main`, `dev`, `prod` or a `feature/team-N` branch. They only change through merged pull requests.
+- Branch from an up-to-date `feature/team-N` (platform work: from `dev`; docs-only changes: from `main`).
 - Name the branch after the team and the issue: `team-<n>/<issue-number>-<short-description>`
   - Example: `team-2/14-add-login-page`
 
@@ -47,6 +81,7 @@ Every change goes through the same path: **issue → branch → commits → pull
 - The PR must carry the same team label as its issue.
 - The title starts with the team name: `[team-2] Add login page`.
 - The description links the issue with a closing keyword (`Closes #14`) and summarizes what changed and how it was tested.
+- Set the base branch as described in [Branches](#branches): `feature/team-N` for a work branch, `dev` for a feature branch, `prod` for a release.
 - Keep the PR focused. Unrelated changes go in their own issue and PR.
 
 ### 5. Review and merge
@@ -54,12 +89,13 @@ Every change goes through the same path: **issue → branch → commits → pull
 - At least one approving review is required before merging. Nobody approves their own PR.
 - All checks must pass.
 - Resolve every review comment before merging.
-- Rebase on or merge in `main` if the branch is behind, then merge.
+- Rebase on or merge in the base branch if your branch is behind, then merge.
 - Delete the branch after it is merged.
 
 ## Never
 
-- Push directly to `main`.
-- Force-push to `main` or to someone else's branch.
+- Push directly to `main`, `dev`, `prod` or a `feature/team-N` branch.
+- Force-push to any of those branches or to someone else's branch.
+- Open a pull request from a work branch straight into `dev` or `prod` (platform work excepted).
 - Merge a PR without a team label, a linked issue or an approving review.
 - Rewrite history that others have already pulled.
