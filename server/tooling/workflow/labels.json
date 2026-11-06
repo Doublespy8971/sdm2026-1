@@ -5,16 +5,36 @@
       "group": "team",
       "rule": "exactly one on every issue and PR",
       "labels": [
-        { "name": "team-1", "color": "1f77b4", "description": "Owned by Team 1" },
-        { "name": "team-2", "color": "2ca02c", "description": "Owned by Team 2" },
-        { "name": "team-3", "color": "d62728", "description": "Owned by Team 3" },
-        { "name": "team-4", "color": "9467bd", "description": "Owned by Team 4" },
+        {
+          "name": "team-1",
+          "color": "1f77b4",
+          "description": "Owned by Team 1"
+        },
+        {
+          "name": "team-2",
+          "color": "2ca02c",
+          "description": "Owned by Team 2"
+        },
+        {
+          "name": "team-3",
+          "color": "d62728",
+          "description": "Owned by Team 3"
+        },
+        {
+          "name": "team-4",
+          "color": "9467bd",
+          "description": "Owned by Team 4"
+        },
         {
           "name": "platform",
           "color": "5319e7",
           "description": "Shared platform in server/: stack, infra, CI, tooling"
         },
-        { "name": "team-instructor", "color": "6e7781", "description": "Owned by the instructor team" }
+        {
+          "name": "team-instructor",
+          "color": "6e7781",
+          "description": "Owned by the instructor team"
+        }
       ]
     },
     {
@@ -47,6 +67,7 @@
   "remove": [
     "accessibility",
     "bug",
+    "cross-team",
     "documentation",
     "duplicate",
     "enhancement",

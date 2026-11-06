@@ -92,7 +92,7 @@ Run `pnpm preflight` before opening a PR. It must pass.
 | Check | Fails when |
 |---|---|
 | `check:branch` | the branch isn't `<team-label>/<issue>-<description>`; it targets the wrong base (team work → `feature/team-N`; platform and instructor work → `main`; `feature/team-N` → `main`; `main` → `prod` or `feature/team-N`); or its issue is missing, closed or has a different label |
-| `check:ownership` | a work branch changes files another label owns (`server/tooling/ownership.json`). With the `cross-team` label on the issue they are warnings instead |
+| `check:ownership` | a work branch changes files another label owns (`server/tooling/ownership.json`). With a line `Cross-team: <why>` in the issue they are warnings instead |
 | `check:commit` | a commit on the branch doesn't follow the commit format (see `CLAUDE.md`) |
 | `check:files` | dependencies, build output, `.env` files or files over 1 MB are committed |
 | `check:secrets` | an added line looks like a token, private key or hard-coded password |

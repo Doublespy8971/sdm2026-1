@@ -15,7 +15,7 @@ These rules apply to every agent (and every human) working in this repository. T
 | `course/`       | Instructors | `team-instructor` |
 | `server/`       | Platform    | `platform`        |
 
-Work inside your own team's folder. Changes to another team's folder or to the shared folders need an issue that says why, and a review from someone on the owning team.
+Work inside your own team's folder. Changes to another team's folder or to the shared folders need an issue that says why, on a line of its own (`Cross-team: <why>`), and a review from someone on the owning team.
 
 ## Tech stack
 
@@ -165,7 +165,7 @@ Issues, pull requests and commits follow templates. **A script chooses the type,
 - Every template heading is required, in order, and must be filled in. Write `None` if a section does not apply.
 - The skills live in `.claude/skills/`. The rules and their rationale are in `server/tooling/workflow/`.
 
-**Before opening a PR, run `pnpm preflight`; it must pass.** It runs lint, typecheck, tests and the build, then checks the branch (name, base, linked issue), folder ownership, commit messages, committed files, secrets, docs links, game config and simulation determinism, and says how to fix each failure. Agents run `pnpm preflight:quick` (lint, typecheck, ownership) after every change. CI runs the same checks on every PR. Files owned by another team are only allowed when the issue has the `cross-team` label and explains why.
+**Before opening a PR, run `pnpm preflight`; it must pass.** It runs lint, typecheck, tests and the build, then checks the branch (name, base, linked issue), folder ownership, commit messages, committed files, secrets, docs links, game config and simulation determinism, and says how to fix each failure. Agents run `pnpm preflight:quick` (lint, typecheck, ownership) after every change. CI runs the same checks on every PR. Files owned by another team are only allowed when the issue explains why on a line of its own: `Cross-team: <why>`.
 
 ## Labels
 
