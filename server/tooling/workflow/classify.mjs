@@ -18,9 +18,9 @@
 // Exit codes: 0 classified, 1 undecided or invalid, 2 usage error, 3 environment problem (git).
 import { fileURLToPath } from "node:url";
 import { EXIT, parseArgs } from "./lib/args.mjs";
-import { changedFiles, currentBranch, newestSubject } from "./lib/git.mjs";
+import { branchSubjects, changedFiles, currentBranch } from "./lib/git.mjs";
 import { loadOwnership } from "./lib/ownership.mjs";
-import { classifyChange } from "./lib/rules.mjs";
+import { classifyChange, strongestSubject } from "./lib/rules.mjs";
 import { loadTypes } from "./lib/types.mjs";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
@@ -73,7 +73,8 @@ try {
   });
   branch = typeof flags.branch === "string" ? flags.branch : currentBranch(root);
   if (!hint && typeof flags.base === "string") {
-    hint = newestSubject(root, typeof flags.head === "string" ? flags.head : "HEAD");
+    const head = typeof flags.head === "string" ? flags.head : "HEAD";
+    hint = strongestSubject(branchSubjects(root, flags.base, head), config.prefixPrecedence);
   }
 } catch (err) {
   console.error(`error: git failed: ${err.stderr?.toString().trim() || err.message}`);
