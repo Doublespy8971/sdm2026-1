@@ -61,3 +61,31 @@ At the end of the hackathon the results are evaluated with the help of AI, based
 - **Collaboration:** contributions spread across the team members.
 
 Only work that is visible in this repository counts, so keep your issues and PRs up to date.
+
+### Checking PR documentation
+
+The evaluation reads the pull requests, so they have to be documented well enough. One command lists, per team, which PRs are not, and why:
+
+```bash
+node course/tooling/pr-report.mjs                     # every PR: open, merged and closed
+node course/tooling/pr-report.mjs --state open        # only open PRs, to fix gaps during the hackathon
+node course/tooling/pr-report.mjs --team team-2       # only one team
+node course/tooling/pr-report.mjs --failing           # leave out the passing PRs
+node course/tooling/pr-report.mjs --json              # machine-readable, e.g. as input for an AI evaluator
+```
+
+It needs the [GitHub CLI](https://cli.github.com/), logged in with `gh auth login`. The output is Markdown: a pass/fail table per team, then every failing PR with its problems. Paste it into an issue or a chat, or save it with `node course/tooling/pr-report.mjs > pr-report.md`.
+
+A PR passes when all of this is true (the rules from [CLAUDE.md](../CLAUDE.md) and the PR templates):
+
+- The title starts with `[<team-label>]`, and the PR has exactly one team label, the same one.
+- The branch is named `<team-label>/<issue-number>-<short-description>` and targets the right base branch.
+- The description follows its template in `.github/PULL_REQUEST_TEMPLATE/`: every heading is present, in order and filled in, `## Linked issue` has `Closes #N`, `## Team` names the team, and every checklist item is ticked. This part is the same check as `pnpm check:pr --number <N>`.
+- The linked issue exists and has the same team label as the PR.
+- Every commit references the linked issue on its own line (`Refs #N`). Merge commits are skipped.
+
+Sync and release PRs (from `main`) and integration PRs (`feature/team-N` into `main`) carry several issues, so for them only the template rules are checked.
+
+**During the hackathon:** run `node course/tooling/pr-report.mjs --state open --failing` now and then, and fix what it lists (edit the PR description, add the label, retarget the base branch). Commits that are already pushed don't have to be rewritten; reference the issue in the next ones.
+
+**For the evaluation:** run `node course/tooling/pr-report.mjs` once at the end and hand the report (or the `--json` output) to the evaluator together with the issues, PRs and commits. PRs merged before a rule existed (for example, before the checklist grew to ten items) fail that rule; take that into account when weighting the result.
