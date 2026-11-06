@@ -15,6 +15,8 @@ concurrency:
 
 permissions:
   contents: read
+  # check:branch and check:ownership read the linked issue (open? same label? cross-team?).
+  issues: read
 
 jobs:
   pull-request:
@@ -46,3 +48,38 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node server/tooling/workflow/check-commit.mjs --range "origin/$BASE_REF..$HEAD_SHA"
+
+      # The branch-level checks from pnpm preflight (issue #10). They read the head and base branch names
+      # from GITHUB_HEAD_REF and GITHUB_BASE_REF, and compare the PR's head commit with origin/<base>.
+      - name: Check the branch and its issue
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node server/tooling/workflow/check-branch.mjs
+
+      - name: Check folder ownership
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node server/tooling/workflow/check-ownership.mjs --head "$HEAD_SHA"
+
+      - name: Check committed files and secrets
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          node server/tooling/workflow/check-files.mjs --head "$HEAD_SHA"
+          node server/tooling/workflow/check-files.mjs secrets --head "$HEAD_SHA"
+
+      - name: Check docs links and simulation determinism
+        if: ${{ !cancelled() }}
+        run: |
+          node server/tooling/workflow/check-docs.mjs
+          node server/tooling/workflow/check-determinism.mjs
+
+      - name: Report shared contract changes
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node server/tooling/workflow/check-contract.mjs --head "$HEAD_SHA"
