@@ -1,0 +1,46 @@
+<!--
+Title format: [team-N] Short imperative summary
+Example:      [team-2] Add login page
+
+Fill in every section below. Don't delete or rename the headings: PRs are
+reviewed and evaluated (including by AI) at the end of the course, and the
+evaluation relies on this structure. Write "None" if a section does not apply.
+
+See AGENTS.md and course/README.md for the full workflow.
+-->
+
+## Linked issue
+
+Closes #
+
+## Team
+
+<!-- Write your team (team-1, team-2, team-3 or team-4) and add the same label to this PR. -->
+
+team-
+
+## Summary
+
+<!-- What changed and why, in a few sentences or bullets. -->
+
+## How to test
+
+<!-- Steps a reviewer can follow to see the change working. -->
+
+1.
+
+## Screenshots
+
+<!-- Screenshots or a short recording of visible changes. Write "None" if nothing visible changed. -->
+
+## Checklist
+
+- [ ] The PR closes an issue with `Closes #N`, and that issue has a `team-N` label
+- [ ] This PR has the same `team-N` label as the issue
+- [ ] The title starts with `[team-N]`
+- [ ] The branch is named `team-N/<issue-number>-<short-description>`
+- [ ] Changes only touch my own team's `games/team-N/` folder, or the issue explains why not
+- [ ] Commits reference the issue (`Refs #N`)
+- [ ] No secrets, credentials, build output or large binaries are committed
+- [ ] The branch is up to date with `main`
+- [ ] I tested the change as described under "How to test"

@@ -4,14 +4,14 @@ These rules apply to every agent (and every human) working in this repository. T
 
 ## Repository layout
 
-| Folder    | Owner  | Label    |
-|-----------|--------|----------|
-| `team-1/` | Team 1 | `team-1` |
-| `team-2/` | Team 2 | `team-2` |
-| `team-3/` | Team 3 | `team-3` |
-| `team-4/` | Team 4 | `team-4` |
-| `games/`  | Shared | (team of the author) |
-| `server/` | Shared | (team of the author) |
+| Folder          | Owner  | Label    |
+|-----------------|--------|----------|
+| `games/team-1/` | Team 1 | `team-1` |
+| `games/team-2/` | Team 2 | `team-2` |
+| `games/team-3/` | Team 3 | `team-3` |
+| `games/team-4/` | Team 4 | `team-4` |
+| `course/`       | Shared | (team of the author) |
+| `server/`       | Shared | (team of the author) |
 
 Work inside your own team's folder. Changes to another team's folder or to the shared folders need an issue that says why, and a review from someone on the owning team.
 
@@ -23,6 +23,7 @@ Every change goes through the same path: **issue → branch → commits → pull
 
 - Open an issue before writing any code. No issue, no branch, no PR.
 - The issue must carry exactly one team label: `team-1`, `team-2`, `team-3` or `team-4`. The label says which team owns the work.
+- The title starts with the team name: `[team-2] Add login page`.
 - Describe what is changing and why, and what "done" looks like.
 
 ### 2. Branch
@@ -42,6 +43,7 @@ Every change goes through the same path: **issue → branch → commits → pull
 ### 4. Pull request
 
 - One pull request per issue.
+- Fill in every section of the [pull request template](.github/pull_request_template.md). Don't delete or rename its headings.
 - The PR must carry the same team label as its issue.
 - The title starts with the team name: `[team-2] Add login page`.
 - The description links the issue with a closing keyword (`Closes #14`) and summarizes what changed and how it was tested.
