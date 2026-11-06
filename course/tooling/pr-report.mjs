@@ -79,7 +79,7 @@ const prs = paginate(
       pullRequests(first: 50, after: $cursor, states: [${STATES[state].join(", ")}], orderBy: { field: CREATED_AT, direction: DESC }) {
         pageInfo { hasNextPage endCursor }
         nodes {
-          number title body url state headRefName baseRefName
+          number title body url state createdAt headRefName baseRefName
           author { login }
           labels(first: 20) { nodes { name } }
           commits(first: ${COMMITS}) { totalCount nodes { commit { oid message } } }
@@ -119,6 +119,7 @@ let results = prs.map((p) => {
     body: p.body,
     url: p.url,
     state: p.state,
+    createdAt: p.createdAt ?? null,
     author: p.author?.login ?? "ghost",
     head: p.headRefName,
     base: p.baseRefName,

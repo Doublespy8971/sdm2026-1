@@ -26,7 +26,7 @@ function body(linked = "Closes #12") {
 
 const pr = {
   number: 30,
-  title: "[team-2] Add login",
+  title: "feat(team-2): add login",
   body: body(),
   head: "team-2/12-add-login",
   base: "feature/team-2",
@@ -60,6 +60,7 @@ describe("teamOf", () => {
     expect(teamOf({ title: "[team-1] X", head: "team-1/1-x", labels: ["team-3"] }, labels)).toBe("team-3");
   });
   it("falls back to the title, then the branch", () => {
+    expect(teamOf({ title: "feat(team-1): add x", head: "x", labels: [] }, labels)).toBe("team-1");
     expect(teamOf({ title: "[team-1] X", head: "x", labels: [] }, labels)).toBe("team-1");
     expect(teamOf({ title: "X", head: "platform/4-x", labels: [] }, labels)).toBe("platform");
     expect(teamOf({ title: "X", head: "feature/team-4", labels: [] }, labels)).toBe("team-4");
@@ -157,5 +158,21 @@ describe("groupByTeam and formatReport", () => {
   it("leaves out the passing list with failingOnly", () => {
     const md = formatReport(groups, { repo: "o/r", state: "all", generatedAt: "now", failingOnly: true });
     expect(md).not.toContain("Passing:");
+  });
+});
+
+describe("title rule by date", () => {
+  const legacy = { ...pr, title: "[team-2] Add login", state: "MERGED" };
+  const titleProblems = (over: Record<string, unknown>) =>
+    audit({ pr: { ...legacy, ...over } }).problems.filter((p: { rule: string }) => p.rule === "title");
+
+  it("accepts the old [team-N] title on PRs opened before the rule changed", () => {
+    expect(titleProblems({ createdAt: "2026-11-06T10:00:00Z" })).toEqual([]);
+    expect(titleProblems({ state: "OPEN", createdAt: "2026-11-06T10:00:00Z" })).toEqual([]);
+  });
+
+  it("requires the Conventional title on PRs opened after it", () => {
+    expect(titleProblems({ createdAt: "2026-11-06T15:00:00Z" })).not.toEqual([]);
+    expect(titleProblems({ createdAt: null })).not.toEqual([]);
   });
 });
