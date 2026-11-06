@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { createRailwayContext, type ProjectDefinition, type ServiceNode } from "railway/iac";
 import { describe, expect, it } from "vitest";
 import program, { ENVIRONMENTS, type EnvironmentName, GAMES } from "./railway.ts";
@@ -47,10 +46,11 @@ describe("railway.ts", () => {
   });
 
   it("loads with plain Node type stripping, the way the Railway CLI runs it", () => {
-    const file = fileURLToPath(new URL("./railway.ts", import.meta.url));
+    // A file:// URL, not a path: on Windows, import("D:\\...") reads "d:" as a URL scheme and fails.
+    const url = new URL("./railway.ts", import.meta.url).href;
     const run = spawnSync(
       process.execPath,
-      ["--experimental-strip-types", "--input-type=module", "-e", `await import(${JSON.stringify(file)});`],
+      ["--experimental-strip-types", "--input-type=module", "-e", `await import(${JSON.stringify(url)});`],
       { encoding: "utf8" },
     );
     expect(run.stderr).not.toMatch(/Error/);
