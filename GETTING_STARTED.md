@@ -73,11 +73,23 @@ These commands work in Git Bash, PowerShell and macOS/Linux terminals. Only one 
 
 Every change follows the same path: **issue → branch → commits → pull request → review → merge**. The full rules are in [CLAUDE.md](CLAUDE.md).
 
+Code reaches production in three steps:
+
+```
+team-N/<issue>-<description>  →  feature/team-N  →  main  →  prod
+        (your work branch)       (team's branch)   (all teams)  (release)
+```
+
+- **Your work branch → `feature/team-N`:** one PR per issue, reviewed by a teammate.
+- **`feature/team-N` → `main`:** when the team's work is ready and CI is green.
+- **`main` → `prod`:** a release PR, when everything on `main` works.
+- Platform work (`platform/<issue>-…`) goes straight into `main`.
+
 1. **Open an issue.** Title `[team-N] Short description`, one label (`team-N`), a goal and a "done when" checklist. Assign yourself.
-2. **Create a branch** from an up-to-date `main`, named after the label and the issue:
+2. **Create a branch** from your team's up-to-date `feature/team-N`, named after the label and the issue:
 
    ```bash
-   git switch main
+   git switch feature/team-N
    git pull
    git switch -c team-N/42-short-description
    ```
@@ -91,9 +103,10 @@ Every change follows the same path: **issue → branch → commits → pull requ
    pnpm test
    ```
 
-5. **Open a pull request.** Title `[team-N] …`, the same label as the issue, `Closes #42` in the description, and every section of the PR template filled in.
+5. **Open a pull request into `feature/team-N`.** Title `[team-N] …`, the same label as the issue, `Closes #42` in the description, and every section of the PR template filled in.
 6. **Wait for CI.** The checks run on Ubuntu, Windows and macOS. All three must be green.
-7. **Get a review** from someone else, fix any comments, then merge and delete the branch.
+7. **Get a review** from a teammate, fix any comments, then merge and delete the branch.
+8. **Keep up to date.** After `feature/team-N` is merged into `main`, merge `main` back into `feature/team-N` before starting the next piece of work.
 
 ## 6. Working with AI agents
 
