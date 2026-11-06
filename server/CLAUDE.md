@@ -66,8 +66,28 @@ Why these rules exist:
 | `pnpm build` | Build every game's client |
 | `pnpm workflow:classify --kind issue\|pr\|commit` | Decide the type, team label, template and base branch for a change (`--json` for scripts; see "Templates, classification and checks" in `CLAUDE.md`) |
 | `pnpm check:issue` / `pnpm check:pr` / `pnpm check:commit` | Check an issue, a pull request or commit messages against their template or format |
+| `pnpm preflight` | Everything a branch must pass before it becomes a PR (see "Preflight" below) |
+| `pnpm preflight:quick` | Lint, typecheck and ownership in a few seconds. Agents run it after every change |
 
-Run `pnpm lint && pnpm typecheck && pnpm test` before opening a PR.
+Run `pnpm preflight` before opening a PR. It must pass.
+
+## Preflight
+
+`pnpm preflight` runs, in order: `check:setup`, lint, typecheck, test, build, then the checks below, and prints how to fix every failure. Every check also runs on its own, takes `--json`, and exits with 0 (OK), 1 (problems found), 2 (usage error) or 3 (environment problem, e.g. `gh` not logged in). The branch-level checks compare the current branch with the base the branch model expects; pass `--base <branch>` to override and `--offline` to skip GitHub lookups.
+
+| Check | Fails when |
+|---|---|
+| `check:branch` | the branch isn't `<team-label>/<issue>-<description>`; it targets the wrong base (team work → `feature/team-N`; platform and instructor work → `main`; `feature/team-N` → `main`; `main` → `prod` or `feature/team-N`); or its issue is missing, closed or has a different label |
+| `check:ownership` | a work branch changes files another label owns (`server/tooling/ownership.json`). With the `cross-team` label on the issue they are warnings instead |
+| `check:commit` | a commit on the branch doesn't follow the commit format (see `CLAUDE.md`) |
+| `check:files` | dependencies, build output, `.env` files or files over 1 MB are committed |
+| `check:secrets` | an added line looks like a token, private key or hard-coded password |
+| `check:docs` | a relative link or heading anchor in any Markdown file is broken |
+| `check:config` | a game's `config/game.json` doesn't match the `*ConfigSchema` its `shared/index.ts` exports |
+| `check:determinism` | simulation code (`room/`, `shared/`, the server core) calls `Math.random()`, `Date.now()`, `performance.now()` or `new Date()`. A line can opt out with `// determinism-ok: <reason>` |
+| `check:contract` | never fails; warns when `server/core/src/shared/` changes, because every game depends on it |
+
+The checks live in `server/tooling/workflow/` with the rest of the workflow toolkit: pure rules in `lib/`, a thin command per check, no runtime dependencies (`check:config` needs `pnpm install`, because it loads each game's schema).
 
 ## CI
 
@@ -77,4 +97,4 @@ Every pull request and every push to `main` runs the **CI** checks (`.github/wor
 - `--frozen-lockfile` fails when `pnpm-lock.yaml` is out of date: run `pnpm install` and commit the lockfile.
 - Actions are pinned to commit SHAs. Update them through a platform PR.
 
-A second workflow, **Workflow checks** (`.github/workflows/workflow-checks.yml`), runs `pnpm check:pr` and `pnpm check:commit` on every pull request: title, team label, branch and base names, template headings, linked issue, ticked checklist and the commit message format. It reruns when the title or description is edited, so fix the text and the check turns green.
+A second workflow, **Workflow checks** (`.github/workflows/workflow-checks.yml`), runs `pnpm check:pr` and `pnpm check:commit` on every pull request: title, team label, branch and base names, template headings, linked issue, ticked checklist and the commit message format. It also runs the branch-level preflight checks (`check:branch`, `check:ownership`, `check:files`, `check:secrets`, `check:docs`, `check:determinism`, `check:contract`); `ci.yml` runs `check:config` after install. It reruns when the title or description is edited, so fix the text and the check turns green.
