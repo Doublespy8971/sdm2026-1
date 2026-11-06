@@ -20,7 +20,7 @@ The server is authoritative: clients send inputs, never state. Rooms advance in 
 
 ## Rooms: game definition → Simulation → room
 
-Design: [docs/design-docs/room-base.md](docs/design-docs/room-base.md).
+Design: [docs/design-docs/room-base.md](docs/design-docs/room-base.md). For client authors: [docs/CLIENT_GUIDE.md](docs/CLIENT_GUIDE.md).
 
 | Layer | Where | What it does |
 |---|---|---|

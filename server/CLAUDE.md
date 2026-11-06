@@ -28,6 +28,8 @@ Docs for the platform live in `server/ARCHITECTURE.md` and `server/docs/`.
 
 ## Writing a game (the game definition)
 
+Building a client or a game? Read [`docs/CLIENT_GUIDE.md`](docs/CLIENT_GUIDE.md) first: connecting, join by code, reconnect, messages, routes, debugging.
+
 - Put the rules in `games/team-N/shared/game.ts` as a `GameDefinition` from `@sdm/core/sim`. See `server/template/shared/game.ts`.
 - The definition and everything in `shared/` must stay browser-safe: import only `@colyseus/schema`, `zod`, `@sdm/core/shared` and `@sdm/core/sim`. Never `colyseus`, `@sdm/host`, `@sdm/core/server` or `node:*`. The client imports it to predict.
 - Your state extends `BaseState` (`BaseState.extend({...}, "MyState")`). Don't write `tick`, `code`, `paused` or `seats` yourself; the room base owns them. Read `seats` if you need to know who is connected.
