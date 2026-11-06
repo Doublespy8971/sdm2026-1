@@ -12,7 +12,13 @@
  * hook also wraps `onJoin` and would swallow join rejections.
  */
 import { performance } from "node:perf_hooks";
-import { generateRoomCode, RoomStats, type RoomStatsSnapshot, Simulation } from "@sdm/core/server";
+import {
+  GameCodeError,
+  generateRoomCode,
+  RoomStats,
+  type RoomStatsSnapshot,
+  Simulation,
+} from "@sdm/core/server";
 import {
   type AppEnv,
   ClientMessage,
@@ -116,28 +122,37 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
     failed = false;
 
     override async onCreate(options: { private?: boolean } = {}): Promise<void> {
-      this.sim = new Simulation(def, {
-        seed: newSeed(),
-        roomId: this.roomId,
-        sha: deps.sha,
-        startedAt: new Date().toISOString(),
-        mode: "live",
-      });
+      // The code is part of the state (and the replay), so pick it before the simulation starts.
+      if (options.private) this.code = generateRoomCode((code) => deps.registry.byCode(code) !== undefined);
+      this.log = deps.logger.child({ roomId: this.roomId, code: this.code });
+      try {
+        this.sim = new Simulation(def, {
+          seed: newSeed(),
+          roomId: this.roomId,
+          sha: deps.sha,
+          startedAt: new Date().toISOString(),
+          mode: "live",
+          code: this.code,
+        });
+      } catch (err) {
+        this.log.error(
+          { err, methodName: err instanceof GameCodeError ? err.hook : "init" },
+          "game code threw; room not created",
+        );
+        throw err;
+      }
       this.state = this.sim.state;
       const config = this.sim.ctx.config;
       this.maxClients = config.maxPlayers;
       this.patchRate = 1000 / config.patchRate;
       this.createdAt = performance.now();
 
+      deps.registry.add(this.#liveView());
       if (options.private) {
-        this.code = generateRoomCode((code) => deps.registry.byCode(code) !== undefined);
-        this.state.code = this.code;
         await this.setMetadata({ code: this.code });
         await this.setPrivate(true);
       }
-      this.log = deps.logger.child({ roomId: this.roomId, code: this.code });
 
-      deps.registry.add(this.#liveView());
       this.setFixedTimestep(() => this.#onTimestep(), config.tickRate);
       this.clock.setInterval(() => this.#logStats(), deps.statsIntervalMs ?? DEFAULT_STATS_INTERVAL_MS);
       if (debugEnabled) this.clock.setInterval(() => this.#sendDebugStats(), DEBUG_STATS_INTERVAL_MS);
@@ -154,6 +169,10 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
       try {
         this.sim.join(client.sessionId, options);
       } catch (err) {
+        if (err instanceof GameCodeError) {
+          this.#fail(err);
+          throw new Error("can't join: the room hit an error and closed");
+        }
         this.log.info({ playerId: client.sessionId, reason: errorMessage(err) }, "join rejected");
         throw new Error(`can't join: ${errorMessage(err)}`);
       }
@@ -162,14 +181,15 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
     }
 
     override async onDrop(client: Client): Promise<void> {
-      this.sim.drop(client.sessionId);
+      if (!this.#guard(() => this.sim.drop(client.sessionId))) return;
       this.log.info({ playerId: client.sessionId, tick: this.state.tick }, "player dropped");
       const seconds = this.sim.ctx.config.reconnectSeconds;
-      if (seconds > 0) this.allowReconnection(client, seconds);
+      // Rejected when the seat expires or the room shuts down; onLeave handles both.
+      if (seconds > 0) this.allowReconnection(client, seconds).catch(() => {});
     }
 
     override onReconnect(client: Client): void {
-      this.sim.reconnect(client.sessionId);
+      if (!this.#guard(() => this.sim.reconnect(client.sessionId))) return;
       this.stats.recordReconnect();
       this.log.info({ playerId: client.sessionId, tick: this.state.tick }, "player reconnected");
     }
@@ -178,7 +198,7 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
       if (!this.sim.hasSeat(client.sessionId)) return;
       const seat = this.state.seats.get(client.sessionId);
       const expired = seat?.connected === false;
-      this.sim.leave(client.sessionId);
+      if (!this.#guard(() => this.sim.leave(client.sessionId))) return;
       const fields = { playerId: client.sessionId, tick: this.state.tick };
       if (expired) this.log.info(fields, "seat expired");
       else this.log.info({ ...fields, consented: code === CloseCode.CONSENTED }, "player left");
@@ -217,7 +237,7 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
         try {
           this.sim.tick();
         } catch (err) {
-          this.#fail(err, "step");
+          this.#fail(err);
           return;
         }
         const ms = performance.now() - start;
@@ -254,8 +274,21 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
       }
     }
 
-    #fail(err: unknown, methodName: string): void {
+    /** Runs a simulation call; on a game-code error, fails the room and returns false. */
+    #guard(fn: () => void): boolean {
+      try {
+        fn();
+        return true;
+      } catch (err) {
+        this.#fail(err);
+        return false;
+      }
+    }
+
+    #fail(err: unknown): void {
+      if (this.failed) return;
       this.failed = true;
+      const methodName = err instanceof GameCodeError ? err.hook : "unknown";
       this.log.error(
         {
           err,

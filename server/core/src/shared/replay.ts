@@ -58,6 +58,10 @@ export const ReplaySchema = z.object({
   startedAt: z.string(),
   /** Events in the order they were applied. */
   events: z.array(ReplayEventSchema),
+  /** Room code players joined with; part of the state, so the replay restores it. */
+  code: z.string().default(""),
+  /** Set when game code threw; the replay runner re-throws at the same point. `final` is null then. */
+  failure: z.object({ tick, hook: z.string(), message: z.string() }).nullable().default(null),
   /** True when recording stopped at the event cap; a truncated replay can't be re-run to its hash. */
   truncated: z.boolean().default(false),
   /** Tick and state hash when the replay was saved, so a re-run can assert it matches. */

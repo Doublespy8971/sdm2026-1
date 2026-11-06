@@ -98,16 +98,23 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
   addEventListener("keydown", (e) => keys.add(e.key.toLowerCase()));
   addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
   let seq = 0;
+  let left = false;
+  // Notices and the disconnect message stay on screen instead of being overwritten by the next frame.
+  const showMessage = (text: string) => {
+    hud.dataset.locked = "1";
+    hud.textContent = text;
+  };
   let lastSentAt = 0;
   const sendEveryMs = 1000 / templateGame.config.tickRate;
 
   room.onMessage(ServerMessage.Notice, (notice: Notice) => {
-    hud.textContent = notice.text;
+    showMessage(notice.text);
   });
   room.onMessage(ServerMessage.DebugStats, () => {});
   room.onMessage(ServerMessage.DebugResult, () => {});
   room.onLeave(() => {
-    hud.textContent = "Disconnected. Refresh to rejoin.";
+    left = true;
+    showMessage("Disconnected. Refresh to rejoin.");
   });
 
   const overlay = createDebugOverlay({ build: health, startOpen: params.debug });
@@ -158,7 +165,7 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
       fps,
       frameMs,
     });
-    requestAnimationFrame(frame);
+    if (!left) requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
 }

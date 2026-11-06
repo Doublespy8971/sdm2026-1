@@ -14,6 +14,8 @@ const replay = (roomId: string, pad = 0): Replay => ({
   scenario: null,
   startedAt: "t",
   events: [],
+  code: "",
+  failure: null,
   truncated: false,
   final: null,
 });

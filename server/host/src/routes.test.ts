@@ -22,6 +22,8 @@ const replay = (roomId: string): Replay => ({
     { type: "join", tick: 0, playerId: "p1", options: { name: "Ada" } },
     { type: "join", tick: 3, playerId: "p2", options: { name: "Bo" } },
   ],
+  code: "",
+  failure: null,
   truncated: false,
   final: { tick: 9, stateHash: "h" },
 });
@@ -93,11 +95,39 @@ describe("routes", () => {
     expect(log.lines.some((l) => l.message === "replay downloaded")).toBe(true);
   });
 
-  it("production replay replaces names with seat-N", async () => {
+  it("production replays keep player names so they re-run to their hash", async () => {
     const { base } = await start("production");
     const body = (await (await fetch(`${base}/api/replays/live1`)).json()) as Replay;
     const names = body.events.map((e) => (e.type === "join" ? e.options.name : null));
-    expect(names).toEqual(["seat-1", "seat-2"]);
+    expect(names).toEqual(["Ada", "Bo"]);
+  });
+
+  it("live replay downloads are rate-limited per IP", async () => {
+    const { base } = await start("development");
+    for (let i = 0; i < 10; i++) expect((await fetch(`${base}/api/replays/live1`)).status).toBe(200);
+    expect((await fetch(`${base}/api/replays/live1`)).status).toBe(429);
+  });
+
+  it("a spoofed X-Forwarded-For does not get around the bug report limit", async () => {
+    const { base } = await start("development");
+    const send = (i: number) =>
+      fetch(`${base}/api/bug-reports`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": `10.0.0.${i}, 9.9.9.9` },
+        body: JSON.stringify(report),
+      });
+    for (let i = 0; i < 5; i++) expect((await send(i)).status).toBe(201);
+    expect((await send(99)).status).toBe(429);
+  });
+
+  it("production /api/stats doesn't reveal room ids or codes", async () => {
+    const { base } = await start("production");
+    const body = (await (await fetch(`${base}/api/stats`)).json()) as { rooms: Record<string, unknown>[] };
+    expect(body.rooms).toHaveLength(2);
+    for (const room of body.rooms) {
+      expect(room.roomId).toBeUndefined();
+      expect(room.code).toBeUndefined();
+    }
   });
 
   it("bug report: 201 with a uuid and the room's replay attached; GET returns it", async () => {

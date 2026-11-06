@@ -21,6 +21,11 @@ const deps = (env: "development" | "production") => ({
 
 const counter = makeCounterGame();
 const tiny = makeCounterGame({ config: { ...counterConfig, maxPlayers: 1 } });
+const badJoin = makeCounterGame({
+  join(_ctx, _playerId, options) {
+    if (options.name === "crash") throw new Error("join boom");
+  },
+});
 const crashing = makeCounterGame({
   step(ctx) {
     if (ctx.tick === 5) throw new Error("boom");
@@ -37,6 +42,7 @@ beforeAll(async () => {
         gs.define("prod", createGameRoom(counter, deps("production")));
         gs.define("tiny", createGameRoom(tiny, deps("development")));
         gs.define("crash", createGameRoom(crashing, deps("development")));
+        gs.define("badjoin", createGameRoom(badJoin, deps("development")));
       },
     }),
     2601,
@@ -116,7 +122,9 @@ describe("createGameRoom", () => {
     await new Promise((r) => setTimeout(r, 50));
     const error = log.lines.find((l) => l.level === "error");
     expect(error?.fields).toMatchObject({ roomId, tick: 5, replayUrl: `/api/replays/${roomId}` });
-    expect(replays.get(roomId)?.final?.tick).toBe(5);
+    expect(replays.get(roomId)?.failure).toMatchObject({ tick: 5, hook: "step", message: "boom" });
+    const replay = replays.get(roomId);
+    expect(() => replay && runReplay(crashing, replay)).toThrow("step threw at tick 5: boom");
     expect(registry.get(roomId)).toBeUndefined();
   });
 
@@ -134,5 +142,29 @@ describe("createGameRoom", () => {
     expect(replay?.events.some((e) => e.type === "input")).toBe(true);
     expect(replay && runReplay(counter, replay).stateHash).toBe(replay?.final?.stateHash);
     expect(log.lines.some((l) => l.message === "room closed")).toBe(true);
+  });
+
+  it("a private room's replay re-runs to its hash", async () => {
+    const room = await colyseus.createRoom("dev", { private: true });
+    const roomId = room.roomId;
+    const client = await colyseus.connectTo(room, { name: "a" });
+    client.send("input", { seq: 1, data: { dx: 1 } });
+    await room.waitForNextTimestep();
+    await client.leave();
+    await new Promise((r) => setTimeout(r, 50));
+    const replay = replays.get(roomId);
+    expect(replay?.code).toMatch(/^[A-Z]{4}$/);
+    expect(replay && runReplay(counter, replay).stateHash).toBe(replay?.final?.stateHash);
+  });
+
+  it("a join hook that throws rejects the join, logs an error and closes the room", async () => {
+    const room = await colyseus.createRoom("badjoin", {});
+    const roomId = room.roomId;
+    await colyseus.connectTo(room, { name: "ok" });
+    await expect(colyseus.sdk.joinById(roomId, { name: "crash" })).rejects.toThrow();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(log.lines.find((l) => l.level === "error")?.fields).toMatchObject({ roomId, methodName: "join" });
+    expect(registry.get(roomId)).toBeUndefined();
+    expect(replays.get(roomId)?.failure).toMatchObject({ hook: "join" });
   });
 });

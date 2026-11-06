@@ -24,6 +24,26 @@ import { stateHash } from "./stateHash.ts";
 
 export const DEFAULT_MAX_EVENTS = 1_000_000;
 
+/** An exception thrown by the game's own code (a definition hook), as opposed to bad client input. */
+export class GameCodeError extends Error {
+  constructor(
+    readonly hook: string,
+    readonly tick: number,
+    readonly original: unknown,
+  ) {
+    super(
+      `${hook} threw at tick ${tick}: ${original instanceof Error ? original.message : String(original)}`,
+    );
+    this.name = "GameCodeError";
+  }
+}
+
+export interface SimFailure {
+  tick: number;
+  hook: string;
+  message: string;
+}
+
 export type InputResult = "ok" | "envelope" | "schema" | "stale-seq" | "paused" | "unknown-player";
 export type SimMode = "live" | "replay";
 
@@ -34,6 +54,8 @@ export interface SimulationOptions<C> {
   startedAt: string;
   mode: SimMode;
   scenario?: string | null;
+  /** Room code; stored in `state.code` before `init`, and in the replay. */
+  code?: string;
   /** Overrides the definition's config; the replay runner passes the replay's embedded config. */
   config?: C;
   maxEvents?: number;
@@ -52,6 +74,7 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
   readonly #events: ReplayEvent[] = [];
   readonly #maxEvents: number;
   #truncated = false;
+  #failure: SimFailure | null = null;
   #pending: TickInput<I>[] = [];
   readonly #lastQueuedSeq = new Map<string, number>();
   readonly #seqReset = new Set<string>();
@@ -64,6 +87,7 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
     const config = structuredClone(opts.config ?? def.config);
     this.#startConfig = structuredClone(config);
     this.state = def.createState();
+    this.state.code = opts.code ?? "";
     this.ctx = {
       state: this.state,
       rng: new SeededRandom(opts.seed),
@@ -71,7 +95,12 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
       tick: 0,
       dt: 1 / config.tickRate,
     };
-    def.init(this.ctx);
+    this.#hook("init", () => def.init(this.ctx));
+  }
+
+  /** Set once game code has thrown. */
+  get failure(): SimFailure | null {
+    return this.#failure;
   }
 
   get truncated(): boolean {
@@ -88,8 +117,9 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
     const options = this.def.joinOptionsSchema.parse(rawOptions ?? {});
     this.state.seats.set(playerId, new Seat());
     this.#lastQueuedSeq.delete(playerId);
-    this.def.join(this.ctx, playerId, options);
+    // Recorded before the hook runs, so a replay re-throws a crash in it at the same point.
     this.#record({ type: "join", tick: this.state.tick, playerId, options });
+    this.#hook("join", () => this.def.join(this.ctx, playerId, options));
   }
 
   leave(playerId: string): void {
@@ -98,16 +128,16 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
     this.#pending = this.#pending.filter((input) => input.playerId !== playerId);
     this.#lastQueuedSeq.delete(playerId);
     this.#seqReset.delete(playerId);
-    this.def.leave(this.ctx, playerId);
     this.#record({ type: "leave", tick: this.state.tick, playerId });
+    this.#hook("leave", () => this.def.leave(this.ctx, playerId));
   }
 
   drop(playerId: string): void {
     const seat = this.state.seats.get(playerId);
     if (!seat) return;
     seat.connected = false;
-    this.def.disconnect?.(this.ctx, playerId);
     this.#record({ type: "drop", tick: this.state.tick, playerId });
+    this.#hook("disconnect", () => this.def.disconnect?.(this.ctx, playerId));
   }
 
   reconnect(playerId: string): void {
@@ -116,8 +146,8 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
     seat.connected = true;
     // A refreshed client starts again at seq 0, so accept its next input whatever the seq.
     this.#seqReset.add(playerId);
-    this.def.reconnect?.(this.ctx, playerId);
     this.#record({ type: "reconnect", tick: this.state.tick, playerId });
+    this.#hook("reconnect", () => this.def.reconnect?.(this.ctx, playerId));
   }
 
   /** Checks and queues one input for the next tick. Never throws. */
@@ -125,8 +155,13 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
     const parsed = InputEnvelopeSchema.safeParse(envelope);
     if (!parsed.success) return "envelope";
     if (!this.hasSeat(playerId)) return "unknown-player";
-    // In a replay, recorded inputs are applied even while paused (`step` advanced through them live).
-    if (this.state.paused && this.mode === "live") return "paused";
+    if (this.mode === "replay") {
+      // Recorded inputs were already accepted live: apply them as recorded, without re-checking
+      // seq, pause or schema (a re-check can disagree, e.g. after a reconnect while paused).
+      this.#pending.push({ playerId, seq: parsed.data.seq, data: parsed.data.data as I });
+      return "ok";
+    }
+    if (this.state.paused) return "paused";
     const { seq } = parsed.data;
     const reset = this.#seqReset.has(playerId);
     const last = this.#lastQueuedSeq.get(playerId);
@@ -151,7 +186,7 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
       applied.set(input.playerId, Math.max(applied.get(input.playerId) ?? -1, input.seq));
     }
     this.ctx.tick = tick;
-    this.def.step(this.ctx, inputs);
+    this.#hook("step", () => this.def.step(this.ctx, inputs));
     for (const [playerId, seq] of applied) {
       const seat = this.state.seats.get(playerId);
       if (seat) seat.lastSeq = seq;
@@ -177,6 +212,7 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
       version: REPLAY_VERSION,
       game: this.def.id,
       roomId: this.#opts.roomId,
+      code: this.#opts.code ?? "",
       seed: this.#opts.seed,
       tickRate: this.#startConfig.tickRate,
       configVersion: this.#startConfig.version,
@@ -186,8 +222,25 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
       startedAt: this.#opts.startedAt,
       events: [...this.#events],
       truncated: this.#truncated,
-      final: { tick: this.state.tick, stateHash: stateHash(this.state) },
+      failure: this.#failure,
+      // After a crash the state is half-updated, so there's no meaningful hash to check against.
+      final: this.#failure ? null : { tick: this.state.tick, stateHash: stateHash(this.state) },
     };
+  }
+
+  /** Runs a game hook; an exception becomes a GameCodeError and is remembered as the failure. */
+  #hook(name: string, fn: () => void): void {
+    try {
+      fn();
+    } catch (err) {
+      const error = new GameCodeError(name, this.state.tick, err);
+      this.#failure ??= {
+        tick: this.state.tick,
+        hook: name,
+        message: error.original instanceof Error ? error.original.message : String(error.original),
+      };
+      throw error;
+    }
   }
 
   #record(event: ReplayEvent): void {

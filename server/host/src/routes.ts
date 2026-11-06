@@ -1,9 +1,9 @@
 /**
  * HTTP routes next to the game: replays, bug reports, stats and join by code.
- * They stay on in production so playtests produce reproducible reports; ids are random, nothing
- * is listed, bug reports are rate-limited, and production replays hide player names.
+ * They stay on in production so playtests produce reproducible reports; ids are random, production
+ * stats list no ids or codes, and bug reports and live replay downloads are rate-limited.
  */
-import { type AppEnv, BugReportSchema, JoinByCodeRequestSchema, type Replay, Routes } from "@sdm/core/shared";
+import { type AppEnv, BugReportSchema, JoinByCodeRequestSchema, Routes } from "@sdm/core/shared";
 import express, { type Application, type NextFunction, type Request, type Response } from "express";
 import type { LiveRoomRegistry, RoomLog } from "./gameRoom.ts";
 import { ProcessStats } from "./processStats.ts";
@@ -11,6 +11,7 @@ import type { MemoryStores } from "./stores.ts";
 
 const BUG_REPORT_LIMIT = "3mb";
 const BUG_REPORTS_PER_MINUTE = 5;
+const LIVE_REPLAYS_PER_MINUTE = 10;
 const MINUTE_MS = 60_000;
 
 export interface RouteDeps {
@@ -26,26 +27,36 @@ export function registerRoutes(app: Application, deps: RouteDeps): ProcessStats 
   const { env, stores, registry, logger } = deps;
   const processStats = deps.processStats ?? new ProcessStats(registry, stores);
   const allowBugReport = rateLimiter(BUG_REPORTS_PER_MINUTE, MINUTE_MS);
-  // Railway sits behind a proxy; trust it so req.ip is the player's address.
-  app.set("trust proxy", true);
+  const allowReplay = rateLimiter(LIVE_REPLAYS_PER_MINUTE, MINUTE_MS);
+  // Railway adds one proxy hop. Trust only that one, so req.ip is the address Railway saw and a
+  // client can't pick its own by sending X-Forwarded-For.
+  app.set("trust proxy", 1);
 
   app.get("/api/replays/:roomId", (req, res) => {
     const roomId = req.params.roomId;
-    const replay = registry.get(roomId)?.snapshot() ?? stores.getReplay(roomId);
+    const live = registry.get(roomId);
+    // Snapshotting a live room copies and hashes its whole history, so limit how often that happens.
+    if (live && !allowReplay(req.ip ?? "unknown")) {
+      res.status(429).json({ error: "too many replay downloads, try again in a minute" });
+      return;
+    }
+    const replay = live?.snapshot() ?? stores.getReplay(roomId);
     if (!replay) {
       res.status(404).json({ error: "unknown room" });
       return;
     }
     logger.info({ roomId, live: registry.get(roomId) !== undefined }, "replay downloaded");
     res.setHeader("Content-Disposition", `attachment; filename="replay-${roomId}.json"`);
-    res.json(env === "production" ? redactNames(replay) : replay);
+    res.json(replay);
   });
 
-  app.post(Routes.bugReports, express.json({ limit: BUG_REPORT_LIMIT }), (req, res) => {
-    if (!allowBugReport(req.ip ?? "unknown")) {
-      res.status(429).json({ error: "too many bug reports, try again in a minute" });
-      return;
-    }
+  const limitBugReports = (req: Request, res: Response, next: NextFunction) => {
+    // Before the body parser, so a rejected request doesn't cost a 3 MB parse.
+    if (allowBugReport(req.ip ?? "unknown")) next();
+    else res.status(429).json({ error: "too many bug reports, try again in a minute" });
+  };
+
+  app.post(Routes.bugReports, limitBugReports, express.json({ limit: BUG_REPORT_LIMIT }), (req, res) => {
     const parsed = BugReportSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "invalid bug report", issues: parsed.error.issues });
@@ -75,9 +86,9 @@ export function registerRoutes(app: Application, deps: RouteDeps): ProcessStats 
   app.get(Routes.stats, (_req, res) => {
     res.json({
       process: processStats.snapshot(),
+      // In production, ids and codes would let anyone join private rooms or pull their replays.
       rooms: registry.all().map((room) => ({
-        roomId: room.roomId,
-        code: room.code,
+        ...(env === "production" ? {} : { roomId: room.roomId, code: room.code }),
         players: room.players(),
         connected: room.connected(),
         stats: room.latestStats(),
@@ -118,22 +129,15 @@ export function registerRoutes(app: Application, deps: RouteDeps): ProcessStats 
   return processStats;
 }
 
-/** Player names in join options become seat-1, seat-2, … in join order. */
-function redactNames(replay: Replay): Replay {
-  let seat = 0;
-  return {
-    ...replay,
-    events: replay.events.map((event) =>
-      event.type === "join" ? { ...event, options: { ...event.options, name: `seat-${++seat}` } } : event,
-    ),
-  };
-}
-
 /** Fixed-window-ish limiter: at most `max` calls per key in any `windowMs`. In memory, per process. */
 function rateLimiter(max: number, windowMs: number): (key: string) => boolean {
   const hits = new Map<string, number[]>();
   return (key) => {
     const now = Date.now();
+    // Drop expired entries for every key now and then, so the map can't grow without bound.
+    if (hits.size > 1_000) {
+      for (const [k, times] of hits) if (times.every((t) => now - t >= windowMs)) hits.delete(k);
+    }
     const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
     if (recent.length >= max) {
       hits.set(key, recent);

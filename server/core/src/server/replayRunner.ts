@@ -22,12 +22,14 @@ export function runReplay<S extends BaseState, I, C extends RoomSettings>(
     roomId: replay.roomId,
     sha: replay.sha,
     scenario: replay.scenario,
+    code: replay.code,
     startedAt: replay.startedAt,
     config: replay.config as C,
     mode: "replay",
   });
   const lastEventTick = replay.events.at(-1)?.tick ?? 0;
-  const until = opts.untilTick ?? replay.final?.tick ?? lastEventTick;
+  const failure = replay.failure;
+  const until = opts.untilTick ?? failure?.tick ?? replay.final?.tick ?? lastEventTick;
   const advanceTo = (tick: number) => {
     while (sim.state.tick < tick) sim.tick({ force: true });
   };
@@ -61,5 +63,10 @@ export function runReplay<S extends BaseState, I, C extends RoomSettings>(
     }
   }
   advanceTo(until);
+  if (failure && opts.untilTick === undefined) {
+    // Re-run the tick that crashed live; it throws the same GameCodeError.
+    if (failure.hook === "step") sim.tick({ force: true });
+    throw new Error(`replay did not reproduce the recorded failure: ${failure.hook} at tick ${failure.tick}`);
+  }
   return { state: sim.state, tick: sim.state.tick, stateHash: stateHash(sim.state) };
 }

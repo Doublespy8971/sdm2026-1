@@ -189,7 +189,7 @@ Rules for the definition, enforced by review and documented in `server/CLAUDE.md
 - **In production (decided):** replays and bug reports stay on, and players can press F8, so real playtests produce reproducible reports. The F8 button must therefore work in production even though the `~` overlay doesn't (a note for #13). With no login, these protections apply *(my calls)*:
   - Bug report ids are random UUIDs, so reports can't be listed or guessed. Replays are fetched by Colyseus room id, which is random too. No route lists replays or reports.
   - `POST /api/bug-reports` is rate-limited per IP (5 a minute), as well as size-capped.
-  - In production, `GET /api/replays/:roomId` replaces player names in join options with seat numbers. Bug reports are returned as submitted, since whoever holds the link is the person who filed it or a triager.
+  - Replays keep player names in every environment. *(Changed during review: redacting names made production replays impossible to re-run to their hash, and names are self-chosen display names.)* In production, `/api/stats` leaves out room ids and codes, and live replay downloads are rate-limited (10 a minute per IP).
 - `Routes.bugReport` in the contract says `/api/bug-report` today. Renaming it to `/api/bug-reports` and adding a `bugReportById` route is a contract change; the PR says no game uses it yet.
 - **Graceful shutdown:** on SIGTERM, send every client a `Notice` that the server is restarting, then let Colyseus close the rooms.
 
