@@ -48,3 +48,11 @@ Replays only work if the simulation is deterministic:
 | `pnpm build` | Build every game's client |
 
 Run `pnpm lint && pnpm typecheck && pnpm test` before opening a PR.
+
+## CI
+
+Every pull request and every push to `main` runs the **CI** check (`.github/workflows/ci.yml`): `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`, the same commands as above. A red check means the PR is not ready for review.
+
+- It covers every package in the workspace, so a platform PR only passes when every team's game still builds.
+- `--frozen-lockfile` fails when `pnpm-lock.yaml` is out of date: run `pnpm install` and commit the lockfile.
+- Actions are pinned to commit SHAs. Update them through a platform PR.
