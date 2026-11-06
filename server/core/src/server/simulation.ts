@@ -160,6 +160,11 @@ export class Simulation<S extends BaseState, I, C extends RoomSettings> {
     this.ctx.tick = tick + 1;
   }
 
+  /** Replaces the room's random generator. Used by the `seed` debug command. */
+  reseed(seed: number): void {
+    this.ctx.rng = new SeededRandom(seed);
+  }
+
   /** Records the command, then runs it. Throws with a readable message when the command fails. */
   applyDebug(playerId: string, command: string, args: string[]): string {
     this.#record({ type: "debug", tick: this.state.tick, playerId, command, args });

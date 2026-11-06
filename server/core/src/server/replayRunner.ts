@@ -52,7 +52,11 @@ export function runReplay<S extends BaseState, I, C extends RoomSettings>(
         sim.queueInput(event.playerId, { seq: event.seq, data: event.data });
         break;
       case "debug":
-        sim.applyDebug(event.playerId, event.command, event.args);
+        try {
+          sim.applyDebug(event.playerId, event.command, event.args);
+        } catch {
+          // The command failed live too (it's recorded before it runs) and changed nothing.
+        }
         break;
     }
   }
