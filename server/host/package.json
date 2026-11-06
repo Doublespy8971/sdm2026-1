@@ -1,0 +1,21 @@
+{
+  "name": "@sdm/host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@colyseus/tools": "0.18.11",
+    "@sdm/core": "workspace:*",
+    "colyseus": "0.18.11",
+    "express": "5.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6"
+  }
+}

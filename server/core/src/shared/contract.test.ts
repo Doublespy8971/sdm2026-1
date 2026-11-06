@@ -1,0 +1,112 @@
+import { describe, expect, it } from "vitest";
+import {
+  BugReportSchema,
+  DebugCommandSchema,
+  HealthResponseSchema,
+  isDebugEnabled,
+  REPLAY_VERSION,
+  ReplaySchema,
+  Routes,
+  SeededRandom,
+} from "./index.ts";
+
+describe("health", () => {
+  it("accepts a valid response and rejects an unknown env", () => {
+    const ok = {
+      ok: true,
+      env: "staging",
+      sha: "abc123",
+      startedAt: "2026-11-06T10:00:00Z",
+      games: ["sample"],
+    };
+    expect(HealthResponseSchema.parse(ok)).toEqual(ok);
+    expect(HealthResponseSchema.safeParse({ ...ok, env: "qa" }).success).toBe(false);
+  });
+
+  it("turns debug tools off only in production", () => {
+    expect(isDebugEnabled("production")).toBe(false);
+    expect(isDebugEnabled("staging")).toBe(true);
+    expect(isDebugEnabled("local")).toBe(true);
+  });
+});
+
+describe("debug commands", () => {
+  it("defaults args and rejects malformed command names", () => {
+    expect(DebugCommandSchema.parse({ id: "1", command: "spawn" }).args).toEqual([]);
+    expect(DebugCommandSchema.safeParse({ id: "1", command: "/spawn" }).success).toBe(false);
+    expect(DebugCommandSchema.safeParse({ id: "1", command: "rm -rf" }).success).toBe(false);
+  });
+});
+
+describe("bug report", () => {
+  it("requires a title and an image data URL for screenshots", () => {
+    const base = {
+      title: "Player stuck in wall",
+      game: "sample",
+      env: "development",
+      sha: "abc123",
+      roomId: "r1",
+      playerId: "p1",
+      tick: 900,
+      scenario: null,
+      url: "https://example.test/?room=QXTR",
+      userAgent: "test",
+      net: { latencyMs: 150, jitterMs: 20, lossPct: 2 },
+      logs: [],
+      screenshot: null,
+    };
+    expect(BugReportSchema.parse(base).description).toBe("");
+    expect(BugReportSchema.safeParse({ ...base, title: "" }).success).toBe(false);
+    expect(BugReportSchema.safeParse({ ...base, screenshot: "https://x/y.png" }).success).toBe(false);
+  });
+});
+
+describe("replay", () => {
+  it("parses every event type", () => {
+    const replay = ReplaySchema.parse({
+      version: REPLAY_VERSION,
+      game: "sample",
+      roomId: "r1",
+      seed: 42,
+      tickRate: 30,
+      configVersion: "1",
+      sha: "abc123",
+      scenario: null,
+      startedAt: "2026-11-06T10:00:00Z",
+      events: [
+        { type: "join", tick: 0, playerId: "p1" },
+        { type: "input", tick: 1, playerId: "p1", seq: 0, data: { dx: 1, dy: 0 } },
+        { type: "debug", tick: 5, playerId: "p1", command: "pause", args: [] },
+        { type: "leave", tick: 9, playerId: "p1" },
+      ],
+      final: { tick: 9, stateHash: "deadbeef" },
+    });
+    expect(replay.events.map((e) => e.type)).toEqual(["join", "input", "debug", "leave"]);
+  });
+});
+
+describe("routes", () => {
+  it("encodes room ids in replay URLs", () => {
+    expect(Routes.replay("a/b")).toBe("/api/replays/a%2Fb");
+  });
+});
+
+describe("SeededRandom", () => {
+  it("produces the same sequence for the same seed", () => {
+    const a = new SeededRandom(1234);
+    const b = new SeededRandom(1234);
+    const seqA = Array.from({ length: 50 }, () => a.next());
+    const seqB = Array.from({ length: 50 }, () => b.next());
+    expect(seqA).toEqual(seqB);
+    expect(new SeededRandom(1235).next()).not.toBe(seqA[0]);
+  });
+
+  it("keeps int() within inclusive bounds", () => {
+    const r = new SeededRandom(7);
+    for (let i = 0; i < 1000; i++) {
+      const n = r.int(1, 3);
+      expect(n).toBeGreaterThanOrEqual(1);
+      expect(n).toBeLessThanOrEqual(3);
+    }
+  });
+});
