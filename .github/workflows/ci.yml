@@ -3,8 +3,8 @@
 # One job per check, so a pull request shows exactly which one failed. Linux only: every game deploys
 # to Railway, which runs Linux. Owner: platform team (issues #8, #81).
 #
-# The job names are the required status checks in .github/rulesets/*.json and REQUIRED_CHECKS in
-# server/tooling/check-release.mjs. Rename a job and change those with it.
+# The job names (emoji included) are the required status checks in .github/rulesets/*.json and
+# REQUIRED_CHECKS in server/tooling/check-release.mjs; check-release.test.ts fails if they drift.
 name: CI
 
 on:
@@ -23,7 +23,7 @@ permissions:
 jobs:
   setup:
     # Node/pnpm pins, LF line endings, no file names that differ only by case.
-    name: setup
+    name: "🧰 setup"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,7 +33,7 @@ jobs:
 
   config:
     # Each game's config/game.json against its config schema.
-    name: config
+    name: "📝 config"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -42,7 +42,7 @@ jobs:
       - run: pnpm check:config
 
   lint:
-    name: lint
+    name: "🧹 lint"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -51,7 +51,7 @@ jobs:
       - run: pnpm lint
 
   typecheck:
-    name: typecheck
+    name: "🔎 typecheck"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -60,7 +60,7 @@ jobs:
       - run: pnpm typecheck
 
   test:
-    name: test
+    name: "🧪 test"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -69,7 +69,7 @@ jobs:
       - run: pnpm test
 
   build:
-    name: build
+    name: "📦 build"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
