@@ -89,3 +89,26 @@ Sync and release PRs (from `main`) and integration PRs (`feature/team-N` into `m
 **During the hackathon:** run `node course/tooling/pr-report.mjs --state open --failing` now and then, and fix what it lists (edit the PR description, add the label, retarget the base branch). Commits that are already pushed don't have to be rewritten; reference the issue in the next ones.
 
 **For the evaluation:** run `node course/tooling/pr-report.mjs` once at the end and hand the report (or the `--json` output) to the evaluator together with the issues, PRs and commits. PRs merged before a rule existed (for example, before the checklist grew to ten items) fail that rule; take that into account when weighting the result.
+
+### Checking issue labels and titles
+
+The evaluation attributes work to teams through the team label and the `[<team-label>]` title prefix of the issues. One command lists, per team, which issues break those rules, and why:
+
+```bash
+node course/tooling/issue-report.mjs                  # every issue: open and closed
+node course/tooling/issue-report.mjs --state open     # only open issues (also: closed, all)
+node course/tooling/issue-report.mjs --team team-2    # only one team
+node course/tooling/issue-report.mjs --failing        # leave out the passing issues
+node course/tooling/issue-report.mjs --json           # machine-readable, e.g. as input for an AI evaluator
+```
+
+It needs the [GitHub CLI](https://cli.github.com/), logged in with `gh auth login`. The output is Markdown: a pass/fail table per team, then every failing issue with its labels and problems. Paste it into an issue or a chat, or save it with `node course/tooling/issue-report.mjs > issue-report.md`.
+
+An issue passes when both of these are true (the rules from "Issue first" in [CLAUDE.md](../CLAUDE.md), the same ones `pnpm check:issue` enforces):
+
+- It has **exactly one** team label: `team-1`, `team-2`, `team-3`, `team-4`, `platform` or `team-instructor`. Other labels, such as `bug`, are fine.
+- Its title starts with `[<team-label>]`, and that prefix is the same as the label (`[team-2]` with the label `team-2`).
+
+An issue is listed under its team label. If it has none or several, it is listed under the team named in its title prefix, and under *(no team)* if there is none. The report only looks at the title and the labels, not the description, because older issues were written before the issue templates existed.
+
+**When to run it:** the instructors run `node course/tooling/issue-report.mjs --state open --failing` at the end of each day, and once more without options before the evaluation. Fix what it lists by adding the missing team label or editing the title; closed issues can be fixed too. Nothing runs automatically and nothing is posted to the issues, so the result stays in the console or wherever it is pasted.
