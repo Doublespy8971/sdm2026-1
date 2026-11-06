@@ -7,29 +7,55 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import config from "@colyseus/tools";
 import { type HealthResponse, Routes } from "@sdm/core/shared";
-import type { Room } from "colyseus";
 import express from "express";
 import { APP_ENV, GIT_SHA, STARTED_AT } from "./env.ts";
+import { type GameRoomDeps, LiveRoomRegistry, type RoomClass } from "./gameRoom.ts";
+import { createLogger, type Logger } from "./logger.ts";
+import { MemoryStores } from "./stores.ts";
 
-// biome-ignore lint/suspicious/noExplicitAny: Room subclasses take arbitrary constructor generics.
-export type RoomClass = new (...args: any[]) => Room<any>;
+export type { RoomClass } from "./gameRoom.ts";
+
+/** Builds a game's Room class from the shared deps, e.g. `(deps) => createGameRoom(myGame, deps)`. */
+export type RoomFactory = (deps: GameRoomDeps) => RoomClass;
+
+const MB = 1024 * 1024;
 
 export interface GameServerOptions {
   /** Game id, e.g. "team-2". Reported by /health. */
   gameId: string;
-  /** Room name → Room class. Clients join with `client.joinOrCreate(name)`. */
-  rooms?: Record<string, RoomClass>;
+  /** Room name → room factory. Clients join with `client.joinOrCreate(name)` or by code. */
+  rooms?: Record<string, RoomFactory>;
   /** Folder with the built client (vite build output). Served at the site root when it exists. */
   clientDist?: string;
 }
 
-export function createGameServer(options: GameServerOptions): ReturnType<typeof config> {
+/** Shared per-process services: logger, stores and the live room registry. */
+export interface GameServerContext {
+  logger: Logger;
+  stores: MemoryStores;
+  registry: LiveRoomRegistry;
+  deps: GameRoomDeps;
+}
+
+export function createGameServerContext(
+  gameId: string,
+  logger: Logger = createLogger(gameId),
+): GameServerContext {
+  const stores = new MemoryStores({ budgetBytes: Number(process.env.MEMORY_BUDGET_MB ?? 256) * MB });
+  const registry = new LiveRoomRegistry();
+  return { logger, stores, registry, deps: { env: APP_ENV, sha: GIT_SHA, stores, logger, registry } };
+}
+
+export function createGameServer(
+  options: GameServerOptions,
+  context: GameServerContext = createGameServerContext(options.gameId),
+): ReturnType<typeof config> {
   const { gameId, rooms = {}, clientDist } = options;
 
   return config({
     initializeGameServer: (gameServer) => {
-      for (const [name, roomClass] of Object.entries(rooms)) {
-        gameServer.define(name, roomClass);
+      for (const [name, factory] of Object.entries(rooms)) {
+        gameServer.define(name, factory(context.deps));
       }
     },
 
