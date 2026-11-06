@@ -62,11 +62,13 @@ export function currentBranch(root) {
 }
 
 /**
- * Subject of the newest commit on `head` that is not a merge commit, or null.
+ * Subjects of the commits on `head` since it forked from `base`, without merge commits, newest first.
  * @param {string} root
+ * @param {string} base
  * @param {string} head
  */
-export function newestSubject(root, head = "HEAD") {
-  const out = git(root, ["log", "--no-merges", "-1", "--format=%s", head]).trim();
-  return out === "" ? null : out;
+export function branchSubjects(root, base, head = "HEAD") {
+  return git(root, ["log", "--no-merges", "--format=%s", `${base}..${head}`])
+    .split("\n")
+    .filter((s) => s.trim() !== "");
 }
