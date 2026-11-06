@@ -26,26 +26,23 @@ Everyone uses the same stack. Don't introduce alternatives without an issue that
 
 ## Branches
 
-Code moves to production through three levels. Each team has its own integration branch, so one team's unfinished work never blocks another.
-
 | Branch | Purpose | Deploys to | Receives pull requests from |
 |--------|---------|------------|-----------------------------|
-| `prod` | Production | Railway production | `dev` |
-| `dev` | Integration of all teams | Railway dev | `feature/team-N`, `platform/*` branches |
+| `prod` | Release: what is live | Railway production | `main` |
+| `main` | The cutting edge: finished work from all teams | Railway dev | `feature/team-N`, `platform/*` branches |
 | `feature/team-N` | Team N's integration branch | not deployed | Team N's work branches (`team-N/<issue>-…`) |
-| `main` | Default branch: course docs and workflow files (`course/`, `AGENTS.md`, `.github/`) | not deployed | work branches that only change those files |
 
 ```
-team-N/<issue>-<description>  →  feature/team-N  →  dev  →  prod
-        (work branch)           (team review)     (CI must be green)   (release)
+team-N/<issue>-<description>  →  feature/team-N  →  main  →  prod
+        (work branch)           (team review)     (CI green)  (release)
 ```
 
-1. **Work branch → `feature/team-N`.** One pull request per issue, reviewed by a teammate.
-2. **`feature/team-N` → `dev`.** Only when CI is green for the feature branch. CI/CD for `dev` is owned by P1; its checks and the Railway deploy are described in [server/ARCHITECTURE.md](server/ARCHITECTURE.md) as they are added.
-3. **`dev` → `prod`.** A release pull request, opened when everything on `dev` works on the Railway dev environment.
-4. **Stay current.** After your feature branch has been merged into `dev`, merge `dev` back into `feature/team-N` before starting the next piece of work.
+1. **Work branch → `feature/team-N`.** One pull request per issue, reviewed by a teammate. Everything your team is building lands here first, so one team's unfinished work never breaks another team.
+2. **`feature/team-N` → `main`.** Only when CI is green for the feature branch. The CI/CD checks are owned by P1 and described in [server/ARCHITECTURE.md](server/ARCHITECTURE.md) as they are added.
+3. **`main` → `prod`.** A release pull request, opened when `main` works and is ready to go live.
+4. **Stay current.** After your feature branch has been merged into `main`, merge `main` back into `feature/team-N` before starting the next piece of work.
 
-Platform work (`server/`, CI, Railway) uses `platform/<issue>-<description>` branches and opens pull requests straight into `dev`.
+Platform work (`server/`, CI, Railway) uses `platform/<issue>-<description>` branches and opens pull requests straight into `main`. Docs-only changes to `course/`, `AGENTS.md` and `.github/` also go straight into `main`.
 
 Branch protection isn't set up yet, so these rules are followed by convention. Follow them as if they were enforced.
 
@@ -62,8 +59,8 @@ Every change goes through the same path: **issue → branch → commits → pull
 
 ### 2. Branch
 
-- Never commit directly to `main`, `dev`, `prod` or a `feature/team-N` branch. They only change through merged pull requests.
-- Branch from an up-to-date `feature/team-N` (platform work: from `dev`; docs-only changes: from `main`).
+- Never commit directly to `main`, `prod` or a `feature/team-N` branch. They only change through merged pull requests.
+- Branch from an up-to-date `feature/team-N` (platform and docs-only work: from `main`).
 - Name the branch after the team and the issue: `team-<n>/<issue-number>-<short-description>`
   - Example: `team-2/14-add-login-page`
 
@@ -81,7 +78,7 @@ Every change goes through the same path: **issue → branch → commits → pull
 - The PR must carry the same team label as its issue.
 - The title starts with the team name: `[team-2] Add login page`.
 - The description links the issue with a closing keyword (`Closes #14`) and summarizes what changed and how it was tested.
-- Set the base branch as described in [Branches](#branches): `feature/team-N` for a work branch, `dev` for a feature branch, `prod` for a release.
+- Set the base branch as described in [Branches](#branches): `feature/team-N` for a work branch, `main` for a feature branch (and for platform and docs-only work), `prod` for a release.
 - Keep the PR focused. Unrelated changes go in their own issue and PR.
 
 ### 5. Review and merge
@@ -94,8 +91,8 @@ Every change goes through the same path: **issue → branch → commits → pull
 
 ## Never
 
-- Push directly to `main`, `dev`, `prod` or a `feature/team-N` branch.
+- Push directly to `main`, `prod` or a `feature/team-N` branch.
 - Force-push to any of those branches or to someone else's branch.
-- Open a pull request from a work branch straight into `dev` or `prod` (platform work excepted).
+- Open a pull request from a team work branch straight into `main` or `prod`.
 - Merge a PR without a team label, a linked issue or an approving review.
 - Rewrite history that others have already pulled.
