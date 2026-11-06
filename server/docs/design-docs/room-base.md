@@ -53,7 +53,7 @@ The host (`@sdm/host`: Colyseus 0.18 + Express, `/health`, static client) and th
 
 ## The game definition
 
-`@sdm/core/server` exports the types and `createGameRoom()`. Shapes are indicative; the builder can refine names.
+`@sdm/core/sim` exports the types (browser-safe); `@sdm/host` exports `createGameRoom()`. *(Changed during the build: the room lives in the host so every room shares one copy of the Colyseus runtime.)* Shapes are indicative; the builder can refine names.
 
 ```ts
 interface RoomSettings {        // RoomSettingsSchema (zod), exported by @sdm/core/server

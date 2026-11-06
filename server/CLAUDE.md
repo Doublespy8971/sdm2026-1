@@ -6,8 +6,8 @@
 
 | Package | Path | What it is |
 |---|---|---|
-| `@sdm/core` | `server/core/` | Contract types (`shared`), plus the server-side and client-side core used by every game |
-| `@sdm/host` | `server/host/` | `startGameServer()`: the Colyseus + Express host with `/health` and static client hosting |
+| `@sdm/core` | `server/core/` | Contract types (`shared`), the sim contract (`sim`), the Simulation and replay runner (`server`), and the client core (`client`) |
+| `@sdm/host` | `server/host/` | `startGameServer()` and `createGameRoom()`: the Colyseus + Express host, routes, logs and stats. Room test helpers in `@sdm/host/testing` |
 | `@sdm/template` | `server/template/` | Reference game. Teams copy it to `games/team-N/` to start |
 | `@sdm/tooling` | `server/tooling/` | Shared TypeScript config (`tsconfig.base.json`) |
 
@@ -15,7 +15,7 @@ Docs for the platform live in `server/ARCHITECTURE.md` and `server/docs/`.
 
 ## Rules for teams
 
-- Your game lives in `games/team-N/` and is its own package (`@team-N/game`). Import the platform only through package names: `@sdm/core/shared`, `@sdm/core/server`, `@sdm/core/client`, `@sdm/host`.
+- Your game lives in `games/team-N/` and is its own package (`@team-N/game`). Import the platform only through package names: `@sdm/core/shared`, `@sdm/core/sim`, `@sdm/core/server`, `@sdm/core/client`, `@sdm/host`, `@sdm/host/testing`.
 - Never import from another team's folder, and never import platform files by relative path (`../../server/...`).
 - Need a platform change? Open an issue with the `platform` label that says what your team needs and why. Don't patch `server/` from a team PR.
 
@@ -25,6 +25,16 @@ Docs for the platform live in `server/ARCHITECTURE.md` and `server/docs/`.
 - Changes to `server/core/src/shared/` (the contract) are breaking by default. Say in the PR which games are affected and how they migrate.
 - `pnpm typecheck` and `pnpm test` run for every workspace package, so a platform PR is only green when every team's game still builds.
 - Don't add a dependency to a platform package unless every game benefits. Game-specific dependencies belong in `games/team-N/package.json`.
+
+## Writing a game (the game definition)
+
+- Put the rules in `games/team-N/shared/game.ts` as a `GameDefinition` from `@sdm/core/sim`. See `server/template/shared/game.ts`.
+- The definition and everything in `shared/` must stay browser-safe: import only `@colyseus/schema`, `zod`, `@sdm/core/shared` and `@sdm/core/sim`. Never `colyseus`, `@sdm/host`, `@sdm/core/server` or `node:*`. The client imports it to predict.
+- Your state extends `BaseState` (`BaseState.extend({...}, "MyState")`). Don't write `tick`, `code`, `paused` or `seats` yourself; the room base owns them. Read `seats` if you need to know who is connected.
+- Your config schema extends `RoomSettingsSchema`, and `config/game.json` sets `tickRate`, `patchRate`, `maxPlayers` and `reconnectSeconds` for your game.
+- Register rooms in `room/index.ts` as factories: `{ game: (deps) => createGameRoom(myGame, deps) }`.
+- Add game debug commands in `commands` (e.g. `spawn`, `tp`). Built-ins (`pause`, `step`, `timescale`, `seed`, `set`, `kick`) can't be overridden. All of them are recorded in replays and rejected in production.
+- Room tests import `boot` from `@sdm/host/testing`, never from `@colyseus/testing` directly, and use their own port.
 
 ## Determinism rules (all game code)
 
