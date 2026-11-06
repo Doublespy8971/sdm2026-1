@@ -5,8 +5,9 @@ name: CI
 
 on:
   pull_request:
+  # prod too: Railway's Wait for CI only waits for check suites that run on the deployed branch.
   push:
-    branches: [main]
+    branches: [main, prod]
 
 # A new push to the same PR cancels the run still in progress for it.
 concurrency:
