@@ -4,14 +4,14 @@ These rules apply to every agent (and every human) working in this repository. T
 
 ## Repository layout
 
-| Folder          | Owner  | Label    |
-|-----------------|--------|----------|
-| `games/team-1/` | Team 1 | `team-1` |
-| `games/team-2/` | Team 2 | `team-2` |
-| `games/team-3/` | Team 3 | `team-3` |
-| `games/team-4/` | Team 4 | `team-4` |
-| `course/`       | Shared | (team of the author) |
-| `server/`       | Platform | `platform` |
+| Folder          | Owner       | Label             |
+|-----------------|-------------|-------------------|
+| `games/team-1/` | Team 1      | `team-1`          |
+| `games/team-2/` | Team 2      | `team-2`          |
+| `games/team-3/` | Team 3      | `team-3`          |
+| `games/team-4/` | Team 4      | `team-4`          |
+| `course/`       | Instructors | `team-instructor` |
+| `server/`       | Platform    | `platform`        |
 
 Work inside your own team's folder. Changes to another team's folder or to the shared folders need an issue that says why, and a review from someone on the owning team.
 
@@ -22,7 +22,7 @@ Every change goes through the same path: **issue → branch → commits → pull
 ### 1. Issue first
 
 - Open an issue before writing any code. No issue, no branch, no PR.
-- The issue must carry exactly one team label: `team-1`, `team-2`, `team-3`, `team-4` or `platform`. The label says which team owns the work.
+- The issue must carry exactly one team label: `team-1`, `team-2`, `team-3`, `team-4`, `platform` or `team-instructor`. The label says which team owns the work.
 - The title starts with the team name: `[team-2] Add login page`.
 - Describe what is changing and why, and what "done" looks like.
 
@@ -30,8 +30,8 @@ Every change goes through the same path: **issue → branch → commits → pull
 
 - Never commit directly to `main`. `main` only changes through merged pull requests.
 - Branch from an up-to-date `main`.
-- Name the branch after the team and the issue: `team-<n>/<issue-number>-<short-description>`
-  - Example: `team-2/14-add-login-page`
+- Name the branch after the team label and the issue: `<team-label>/<issue-number>-<short-description>`
+  - Examples: `team-2/14-add-login-page`, `platform/8-ci-checks`, `team-instructor/20-add-team-instructor-rules`
 
 ### 3. Commits
 

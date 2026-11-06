@@ -19,7 +19,7 @@
     },
     {
       "path": "course/**",
-      "owner": "shared"
+      "owner": "team-instructor"
     },
     {
       "path": "server/**",
