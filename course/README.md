@@ -88,7 +88,7 @@ Sync and release PRs (from `main`) and integration PRs (`feature/team-N` into `m
 
 **During the hackathon:** run `node course/tooling/pr-report.mjs --state open --failing` now and then, and fix what it lists (edit the PR description, add the label, retarget the base branch). Commits that are already pushed don't have to be rewritten; reference the issue in the next ones.
 
-**For the evaluation:** run `node course/tooling/pr-report.mjs` once at the end and hand the report (or the `--json` output) to the evaluator together with the issues, PRs and commits. PRs merged before a rule existed (for example, titles like `[team-2] Add login` from before the commit format, or a checklist from before it grew to ten items) fail that rule; take that into account when weighting the result. The report still attributes such PRs to their team through the old `[team-N]` prefix.
+**For the evaluation:** run `node course/tooling/pr-report.mjs` once at the end and hand the report (or the `--json` output) to the evaluator together with the issues, PRs and commits. PRs merged before a rule existed (for example, a checklist from before it grew to ten items) fail that rule; take that into account when weighting the result. The title rule is the exception: PRs opened before the commit format (#86, merged 2026-11-06 14:29 UTC) are judged by the title rule of their time, `[team-2] Add login`, and the report attributes them to their team through that prefix. Only the report makes this exception: `pnpm check:pr` and CI always ask for the commit format, so a PR that is still open needs it before it merges.
 
 #### Fixing PRs automatically
 
