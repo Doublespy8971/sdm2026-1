@@ -149,10 +149,10 @@ describe("guests in replays", () => {
   function guestSim() {
     const def = guestGame();
     const sim = new Simulation(def, { seed: 3, roomId: "r", sha: "t", startedAt: "x", mode: "live" });
-    sim.join("p1", { name: "a", guestId: ada }, guestFingerprint(ada));
+    sim.join("p1", { name: "a", guestId: ada }, guestFingerprint("counter", ada));
     sim.tick();
-    sim.join("p2", { name: "a again", guestId: ada }, guestFingerprint(ada));
-    sim.join("p3", { name: "b", guestId: bo }, guestFingerprint(bo));
+    sim.join("p2", { name: "a again", guestId: ada }, guestFingerprint("counter", ada));
+    sim.join("p3", { name: "b", guestId: bo }, guestFingerprint("counter", bo));
     sim.join("p4", { name: "c" });
     for (let i = 0; i < 5; i++) sim.tick();
     return { def, sim };
@@ -167,7 +167,7 @@ describe("guests in replays", () => {
     expect(json).not.toContain(bo);
     const result = runReplay(def, replay);
     expect(result.stateHash).toBe(replay.final?.stateHash);
-    expect(result.state.seats.get("p2")?.guest).toBe(guestFingerprint(ada));
+    expect(result.state.seats.get("p2")?.guest).toBe(guestFingerprint("counter", ada));
     expect(result.state.seats.get("p4")?.guest).toBe("");
   });
 

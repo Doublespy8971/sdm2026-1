@@ -20,6 +20,7 @@ const deps = (env: "development" | "production") => ({
 });
 
 const counter = makeCounterGame();
+const otherGame = makeCounterGame({ id: "other-game" });
 const tiny = makeCounterGame({ config: { ...counterConfig, maxPlayers: 1 } });
 const badJoin = makeCounterGame({
   join(_ctx, _playerId, options) {
@@ -40,6 +41,7 @@ beforeAll(async () => {
       initializeGameServer: (gs) => {
         gs.define("dev", createGameRoom(counter, deps("development")));
         gs.define("prod", createGameRoom(counter, deps("production")));
+        gs.define("other", createGameRoom(otherGame, deps("development")));
         gs.define("tiny", createGameRoom(tiny, deps("development")));
         gs.define("crash", createGameRoom(crashing, deps("development")));
         gs.define("badjoin", createGameRoom(badJoin, deps("development")));
@@ -187,17 +189,17 @@ describe("createGameRoom", () => {
         interval: 20,
       });
 
-      const fp = guestFingerprint(ada);
+      const fp = guestFingerprint(counter.id, ada);
       expect(fp).toMatch(/^[0-9a-f]{12}$/);
       for (const view of [a.state, c.state]) {
         expect(guestOf(view, a.sessionId)).toBe(fp);
         expect(guestOf(view, b.sessionId)).toBe(fp);
-        expect(guestOf(view, c.sessionId)).toBe(guestFingerprint(bo));
+        expect(guestOf(view, c.sessionId)).toBe(guestFingerprint(counter.id, bo));
       }
-      expect(guestFingerprint(bo)).not.toBe(fp);
+      expect(guestFingerprint(counter.id, bo)).not.toBe(fp);
 
       const joins = log.lines.filter((l) => l.message === "player joined");
-      expect(joins.map((l) => l.fields.guest)).toEqual([fp, fp, guestFingerprint(bo)]);
+      expect(joins.map((l) => l.fields.guest)).toEqual([fp, fp, guestFingerprint(counter.id, bo)]);
       await vi.waitFor(() => expect(log.lines.some((l) => l.message === "room.stats")).toBe(true), {
         timeout: 2000,
         interval: 20,
@@ -220,6 +222,30 @@ describe("createGameRoom", () => {
       expect(places.storedReplay).toContain(fp);
       const replay = replays.get(roomId);
       expect(replay && runReplay(counter, replay).stateHash).toBe(replay?.final?.stateHash);
+    });
+
+    it("the fingerprint is per game: one guest ID gets the same guest in every room of a game, another in a different game", async () => {
+      const [first, second, other] = await Promise.all([
+        colyseus.createRoom("dev", {}),
+        colyseus.createRoom("dev", {}),
+        colyseus.createRoom("other", {}),
+      ]);
+      const clients = await Promise.all(
+        [first, second, other].map((room) => colyseus.connectTo(room, { name: "a", guestId: ada })),
+      );
+      const guests = await Promise.all(
+        clients.map(async (client) => {
+          await vi.waitFor(() => expect(guestOf(client.state, client.sessionId)).toBeTruthy(), {
+            timeout: 2000,
+            interval: 20,
+          });
+          return guestOf(client.state, client.sessionId);
+        }),
+      );
+      expect(guests[0]).toBe(guestFingerprint(counter.id, ada));
+      expect(guests[1]).toBe(guests[0]);
+      expect(guests[2]).toBe(guestFingerprint("other-game", ada));
+      expect(guests[2]).not.toBe(guests[0]);
     });
 
     it('a join with a missing or bad guestId still works, with guest ""', async () => {

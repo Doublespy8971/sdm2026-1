@@ -105,7 +105,7 @@ describe("template room", () => {
     const b = await colyseus.sdk.joinById(a.roomId, { name: "Ada, tab 2", guestId });
     await b.waitForInitialState();
     await a.waitForNextPatch();
-    const fp = guestFingerprint(guestId);
+    const fp = guestFingerprint(templateGame.id, guestId);
     expect(a.state.seats.get(a.sessionId)?.guest).toBe(fp);
     expect(a.state.seats.get(b.sessionId)?.guest).toBe(fp);
     expect(a.state.players.get(b.sessionId)?.name).toBe("Ada, tab 2");

@@ -113,7 +113,7 @@ describe("Simulation guests", () => {
       },
     });
     const sim = newSim({}, def);
-    const guest = guestFingerprint(RAW_GUEST);
+    const guest = guestFingerprint("counter", RAW_GUEST);
     sim.join("p1", { name: "Ada" }, guest);
     expect(sim.state.seats.get("p1")?.guest).toBe(guest);
     expect(seen).toEqual([{ guest }]);
@@ -128,16 +128,16 @@ describe("Simulation guests", () => {
       },
     });
     const sim = newSim({}, def);
-    sim.join("p1", { name: "Ada", guestId: RAW_GUEST }, guestFingerprint(RAW_GUEST));
+    sim.join("p1", { name: "Ada", guestId: RAW_GUEST }, guestFingerprint("counter", RAW_GUEST));
     expect(seen).toEqual([{ name: "Ada" }]);
   });
 
   it("never puts the raw guest ID in the state or the replay", () => {
     const sim = newSim();
-    sim.join("p1", { name: "Ada", guestId: RAW_GUEST }, guestFingerprint(RAW_GUEST));
+    sim.join("p1", { name: "Ada", guestId: RAW_GUEST }, guestFingerprint("counter", RAW_GUEST));
     sim.tick();
     const replay = sim.snapshot();
-    expect(replay.events[0]).toMatchObject({ type: "join", guest: guestFingerprint(RAW_GUEST) });
+    expect(replay.events[0]).toMatchObject({ type: "join", guest: guestFingerprint("counter", RAW_GUEST) });
     expect(JSON.stringify(replay)).not.toContain(RAW_GUEST);
     expect(JSON.stringify(sim.state.toJSON())).not.toContain(RAW_GUEST);
   });

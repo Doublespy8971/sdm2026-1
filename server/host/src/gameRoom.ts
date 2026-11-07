@@ -124,6 +124,8 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
     failed = false;
 
     override async onCreate(options: { private?: boolean } = {}): Promise<void> {
+      // The creator's join options arrive here too, raw `guestId` included: read only `private`, and
+      // never log or store `options` as a whole.
       // The code is part of the state (and the replay), so pick it before the simulation starts.
       if (options.private) this.code = generateRoomCode((code) => deps.registry.byCode(code) !== undefined);
       this.log = deps.logger.child({ roomId: this.roomId, code: this.code });
@@ -168,8 +170,12 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
     }
 
     override onJoin(client: Client, options: unknown): void {
-      // Only the fingerprint goes further: the raw guest ID is a secret (see @sdm/core/shared guest.ts).
-      const guest = guestFingerprint((options as Record<string, unknown> | undefined)?.[GUEST_ID_OPTION]);
+      // Only the fingerprint goes further, scoped to this game (def.id) so it can't link one player
+      // across the games that share the origin. Never log `options`: it still holds the raw guest ID.
+      const guest = guestFingerprint(
+        def.id,
+        (options as Record<string, unknown> | undefined)?.[GUEST_ID_OPTION],
+      );
       try {
         this.sim.join(client.sessionId, options, guest);
       } catch (err) {
