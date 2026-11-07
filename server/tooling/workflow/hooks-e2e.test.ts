@@ -69,6 +69,87 @@ describe("commit-msg hook", () => {
   });
 });
 
+describe("commit-msg hook with an editor", () => {
+  // A tiny "editor" in Node, so the test runs anywhere: it writes the given subject above what git put
+  // in the file (its comments and, with -v, the diff).
+  let editor: string;
+  beforeAll(() => {
+    editor = path.join(dir, "..", `sdm-editor-${process.pid}.mjs`);
+    writeFileSync(
+      editor,
+      'import { readFileSync, writeFileSync } from "node:fs";\nconst f = process.argv[2];\nwriteFileSync(f, (process.env.SUBJECT ?? "") + readFileSync(f, "utf8"));\n',
+    );
+  });
+  afterAll(() => rmSync(editor, { force: true }));
+  const withEditor = (subject: string, ...args: string[]) =>
+    execFileSync("git", args, {
+      cwd: dir,
+      encoding: "utf8",
+      stdio: "pipe",
+      env: { ...process.env, GIT_EDITOR: `node "${editor}"`, SUBJECT: subject },
+    });
+
+  it("keeps the git commit -v diff out of the message", () => {
+    writeFileSync(path.join(dir, "verbose"), "a line in the diff\n");
+    git("add", "-A");
+    withEditor("feat(team-2): add verbose\n", "commit", "-q", "-v");
+    expect(lastMessage().trim()).toBe("feat(team-2): add verbose\n\nRefs #14");
+  });
+
+  it("adds the reference when a commit is reworded during a rebase", () => {
+    writeFileSync(path.join(dir, "reword"), "x");
+    git("add", "-A");
+    git("commit", "-q", "--no-verify", "-m", "feat(team-2): add reword");
+    const seq = path.join(dir, "..", `sdm-seq-${process.pid}.mjs`);
+    writeFileSync(
+      seq,
+      'import { readFileSync, writeFileSync } from "node:fs";\nconst f = process.argv[2];\nwriteFileSync(f, readFileSync(f, "utf8").replace(/^pick /m, "reword "));\n',
+    );
+    try {
+      execFileSync("git", ["rebase", "-q", "-i", "HEAD~1"], {
+        cwd: dir,
+        stdio: "pipe",
+        env: {
+          ...process.env,
+          GIT_SEQUENCE_EDITOR: `node "${seq}"`,
+          GIT_EDITOR: `node "${editor}"`,
+          SUBJECT: "",
+        },
+      });
+    } finally {
+      rmSync(seq, { force: true });
+    }
+    expect(lastMessage().trim()).toBe("feat(team-2): add reword\n\nRefs #14");
+  });
+});
+
+describe("pre-push hook", () => {
+  // Pushes that need no checks never reach pnpm, so they work in this throwaway repository.
+  let remote: string;
+  beforeAll(() => {
+    remote = mkdtempSync(path.join(tmpdir(), "sdm-hooks-remote-"));
+    execFileSync("git", ["init", "-q", "--bare", remote]);
+    git("remote", "add", "origin", remote);
+    git("push", "-q", "--no-verify", "origin", "main", "team-2/14-add-login");
+  });
+  afterAll(() => rmSync(remote, { recursive: true, force: true }));
+  const push = (...args: string[]) =>
+    execFileSync("git", ["push", ...args], { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+
+  it("lets tags and deletions through without running the checks", () => {
+    git("tag", "v1");
+    expect(() => push("-q", "origin", "v1")).not.toThrow();
+    git("branch", "gone");
+    git("push", "-q", "--no-verify", "origin", "gone");
+    expect(() => push("-q", "origin", "--delete", "gone")).not.toThrow();
+  });
+
+  it("doesn't check the working tree when another branch is pushed", () => {
+    git("branch", "-f", "other", "main");
+    expect(() => push("-q", "origin", "other")).not.toThrow();
+  });
+});
+
 describe("hook files", () => {
   it("are Node scripts, so they run on every OS without bash", () => {
     for (const name of ["commit-msg", "pre-push"])

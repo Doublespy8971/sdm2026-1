@@ -107,8 +107,8 @@ The checks live in `server/tooling/workflow/` with the rest of the workflow tool
 
 | Hook | What it does |
 |---|---|
-| `commit-msg` | On a work branch (`<team-label>/<issue>-<description>`), adds `Refs #<issue>` to the message when it has no issue reference yet, in its own paragraph before any trailers. Then checks the message with the `check:commit` rules and refuses it with the reason and an example. Merge, revert and fixup messages pass untouched. |
-| `pre-push` | Runs `pnpm preflight:quick` (lint, typecheck, ownership) and, on a work branch, `pnpm check:branch --offline`. |
+| `commit-msg` | On a work branch (`<team-label>/<issue>-<description>`), adds `Refs #<issue>` to the message when it has no issue reference yet, in its own paragraph before any trailers. Then checks the message with the `check:commit` rules and refuses it with the reason and an example. Merge, revert and fixup messages pass untouched. It fills in the bare `Refs #` line from `.gitmessage`, works during a rebase reword, and never touches the diff `git commit -v` adds below the scissors line. |
+| `pre-push` | Runs `pnpm preflight:quick` (lint, typecheck, ownership) and, on a work branch, `pnpm check:branch --offline`. These look at the working tree, so they only run when you push the commit you have checked out (not for tags, deletions or another branch), and a failure doesn't block the push while you have uncommitted changes, or when the checks can't run on this machine (exit code 3, e.g. a base branch that isn't fetched). It says so each time; CI checks the pushed commits. |
 
 - Skip a hook once with `git commit --no-verify` or `git push --no-verify`. CI and the workflow checks still catch anything that was skipped.
 - The hooks are Node scripts (no bash), so they run on macOS, Windows (Git Bash) and Linux.

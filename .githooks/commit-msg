@@ -3,26 +3,36 @@
 // Adds "Refs #N" from a work branch's name when the message has no issue reference, then checks the
 // message with the same rules as `pnpm check:commit` and CI. Skip once with `git commit --no-verify`.
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { checkCommit } from "../server/tooling/workflow/lib/check-commit.mjs";
-import { addIssueRef } from "../server/tooling/workflow/lib/hooks.mjs";
+import { addIssueRef, beforeScissors, branchFromRebase } from "../server/tooling/workflow/lib/hooks.mjs";
+
+const git = (...args) =>
+  execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 
 const file = process.argv[2];
 let branch = "";
 try {
-  branch = execFileSync("git", ["symbolic-ref", "--short", "HEAD"], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
-  }).trim();
+  branch = git("symbolic-ref", "--short", "HEAD");
 } catch {
-  // Detached HEAD (e.g. during a rebase): nothing to add.
+  // Detached HEAD. During a rebase (e.g. a reword) git records the branch being rebased.
+  for (const name of ["rebase-merge/head-name", "rebase-apply/head-name"]) {
+    try {
+      const p = git("rev-parse", "--git-path", name);
+      if (existsSync(p)) {
+        branch = branchFromRebase(readFileSync(p, "utf8"));
+        break;
+      }
+    } catch {}
+  }
 }
 
 const original = readFileSync(file, "utf8");
 const message = addIssueRef(original, branch);
 if (message !== original) writeFileSync(file, message);
 
-const result = checkCommit(message, { stripComments: true });
+// Only what is above git's scissors line (`git commit -v`) becomes the message.
+const result = checkCommit(beforeScissors(message), { stripComments: true });
 if (!result.ok) {
   console.error(`\ncommit-msg: "${result.subject}" does not follow the commit format:`);
   for (const p of result.problems) console.error(`  - [${p.rule}] ${p.message}`);
