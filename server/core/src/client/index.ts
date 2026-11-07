@@ -7,6 +7,7 @@
  * Still to come: Colyseus connection and reconnect (needs the room base, #12), debug console,
  * state inspector, F8 bug report.
  */
+export * from "./bugReport.ts";
 export * from "./debugOverlay.ts";
 export * from "./interpolation.ts";
 export * from "./netSim.ts";
