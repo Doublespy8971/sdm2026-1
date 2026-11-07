@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+// git pre-push hook, switched on by `pnpm install` (server/tooling/install-hooks.mjs).
+// Runs the fast checks before anything leaves your machine: `pnpm preflight:quick` (lint, typecheck,
+// folder ownership) and, on a work branch, `pnpm check:branch --offline`. CI runs the full set.
+// Skip once with `git push --no-verify`.
+import { execFileSync, spawnSync } from "node:child_process";
+import { issueFromBranch } from "../server/tooling/workflow/lib/hooks.mjs";
+
+const run = (args) => {
+  const r = spawnSync("pnpm", args, { stdio: "inherit", shell: process.platform === "win32" });
+  if (r.error?.code === "ENOENT") {
+    console.error("pre-push: pnpm not found, so the checks were skipped. Install it (see GETTING_STARTED.md).");
+    process.exit(0);
+  }
+  return r.status === 0;
+};
+
+let branch = "";
+try {
+  branch = execFileSync("git", ["symbolic-ref", "--short", "HEAD"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).trim();
+} catch {}
+
+const ok = run(["-s", "preflight:quick"]) && (issueFromBranch(branch) === null || run(["-s", "check:branch", "--offline"]));
+if (!ok) {
+  console.error('\npre-push: fix the problems above and push again (or skip this check once with "git push --no-verify").\n');
+  process.exit(1);
+}

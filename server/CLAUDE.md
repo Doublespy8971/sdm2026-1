@@ -68,7 +68,7 @@ Why these rules exist:
 
 | Command | What it does |
 |---|---|
-| `pnpm install` | Install everything (checks your Node version first) |
+| `pnpm install` | Install everything (checks your Node version first) and switch on the git hooks (see "Git hooks" below) |
 | `pnpm check:setup` | Check this machine's setup and explain how to fix problems (`--json` for scripts) |
 | `pnpm dev` | Run the template game: server on :2567, client on :5173 |
 | `pnpm --filter @team-N/game dev` | Run your team's game |
@@ -100,6 +100,20 @@ Run `pnpm preflight` before opening a PR. It must pass.
 | `check:contract` | never fails; warns when `server/core/src/shared/` changes, because every game depends on it |
 
 The checks live in `server/tooling/workflow/` with the rest of the workflow toolkit: pure rules in `lib/`, a thin command per check, no runtime dependencies (`check:config` needs `pnpm install`, because it loads each game's schema).
+
+## Git hooks
+
+`pnpm install` points git at the repository's hooks in `.githooks/` (`git config core.hooksPath .githooks`, via `server/tooling/install-hooks.mjs`), so every commit and push is checked, by people and by every coding agent alike: they all go through git. Nothing else to install.
+
+| Hook | What it does |
+|---|---|
+| `commit-msg` | On a work branch (`<team-label>/<issue>-<description>`), adds `Refs #<issue>` to the message when it has no issue reference yet, in its own paragraph before any trailers. Then checks the message with the `check:commit` rules and refuses it with the reason and an example. Merge, revert and fixup messages pass untouched. |
+| `pre-push` | Runs `pnpm preflight:quick` (lint, typecheck, ownership) and, on a work branch, `pnpm check:branch --offline`. |
+
+- Skip a hook once with `git commit --no-verify` or `git push --no-verify`. CI and the workflow checks still catch anything that was skipped.
+- The hooks are Node scripts (no bash), so they run on macOS, Windows (Git Bash) and Linux.
+- If you already use your own `core.hooksPath`, `pnpm install` leaves it alone and says how to switch to the repo's hooks. It does nothing in CI or outside a git checkout (a Railway build).
+- The rules live in `server/tooling/workflow/lib/hooks.mjs`, with tests next to the other workflow checks.
 
 ## CI
 
