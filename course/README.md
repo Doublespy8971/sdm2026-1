@@ -90,6 +90,21 @@ Sync and release PRs (from `main`) and integration PRs (`feature/team-N` into `m
 
 **For the evaluation:** run `node course/tooling/pr-report.mjs` once at the end and hand the report (or the `--json` output) to the evaluator together with the issues, PRs and commits. PRs merged before a rule existed (for example, before the checklist grew to ten items) fail that rule; take that into account when weighting the result.
 
+#### Fixing PRs automatically
+
+```bash
+node course/tooling/pr-report.mjs --fix            # dry run: what would change, per PR
+node course/tooling/pr-report.mjs --fix --apply    # make the changes on GitHub
+```
+
+`--fix` corrects what can be corrected without guessing, on every PR (`--state` and `--team` narrow it down):
+
+- **Open PRs:** adds the missing team label, fixes the title, restructures the description into its template (existing text is moved under the right heading, never removed), adds `Closes #N` from the branch name, sets `## Team`, appends missing checklist items unticked, and retargets the PR to the right base branch. A PR stacked on another work branch is not retargeted.
+- **Merged and closed PRs:** only what the evaluation needs to credit the work: the team label, the title, the linked issue and the team. Their descriptions otherwise stay as they were written, since they followed the template of their time.
+- **Titles** follow the rule of the time the PR was opened. A conventional title only gets its scope corrected to the team label. An old `[team-2] …` title on a PR opened before conventional titles (#86) stays as it is. A newer title gets the type its commits agree on, and is left alone if they don't agree.
+
+It never ticks checklist items, writes a summary, test steps or screenshots, or touches commits. What only the author can do is listed in one comment per PR. The next run updates that comment instead of posting a new one, and a run after `--apply` changes nothing. Open PRs always get the comment; merged and closed ones only when something was changed on them.
+
 ### Checking issue labels and titles
 
 The evaluation attributes work to teams through the team label and the `[<team-label>]` title prefix of the issues. One command lists, per team, which issues break those rules, and why:
@@ -111,7 +126,20 @@ An issue passes when both of these are true (the rules from "Issue first" in [CL
 
 An issue is listed under its team label. If it has none or several, it is listed under the team named in its title prefix, and under *(no team)* if there is none. The report only looks at the title and the labels, not the description, because older issues were written before the issue templates existed.
 
-**When to run it:** the instructors run `node course/tooling/issue-report.mjs --state open --failing` at the end of each day, and once more without options before the evaluation. Fix what it lists by adding the missing team label or editing the title; closed issues can be fixed too. Nothing runs automatically and nothing is posted to the issues, so the result stays in the console or wherever it is pasted.
+**When to run it:** the instructors run `node course/tooling/issue-report.mjs --state open --failing` at the end of each day, and once more without options before the evaluation. Fix what it lists by adding the missing team label or editing the title, or let `--fix` do it; closed issues can be fixed too. Nothing runs automatically, and without `--fix --apply` nothing is posted to the issues.
+
+#### Fixing issues automatically
+
+```bash
+node course/tooling/issue-report.mjs --fix            # dry run: what would change, per issue
+node course/tooling/issue-report.mjs --fix --apply    # make the changes on GitHub
+```
+
+- **Missing team label:** added when the title prefix names a team, also a malformed one such as `[team : 4]` or `[Team 4]`.
+- **Missing or malformed title prefix:** set to `[<team-label>]` when the issue has exactly one team label.
+- **Not fixed:** a prefix that names another team than the label, several team labels, or an issue that names no team at all. Which team is right is for the author to say, so on open issues these are listed in a comment, which the next run updates instead of repeating. Closed issues only get a comment when something was changed on them.
+
+Run the issue fix before the PR fix: the PR report also checks that the linked issue has the same team label.
 
 ### Student activity report
 
