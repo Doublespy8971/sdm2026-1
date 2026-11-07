@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   checkInstructor,
@@ -39,6 +39,7 @@ describe("instructorClaims", () => {
     ["the old [team-instructor] prefix", { title: "[team-instructor] Add a report" }],
     ["the Team section", { body: "## Summary\n\nx\n\n## Team\n\nteam-instructor\n" }],
     ["the Team section in backticks", { body: "## Team\n\n`team-instructor`\n" }],
+    ["the Team section in capitals", { body: "## Team\n\nTeam-Instructor\n" }],
   ])("detects %s", (_name, over) => {
     expect(instructorClaims(over).length).toBeGreaterThan(0);
   });
@@ -185,9 +186,31 @@ describe("the allowlist", () => {
     }
   });
 
-  it("is protected by CODEOWNERS", () => {
+  it("is protected by CODEOWNERS, together with the code that enforces it", () => {
     const text = readFileSync(new URL(".github/CODEOWNERS", root), "utf8");
-    expect(text).toContain("/.github/instructors.json");
-    expect(text).toContain("/course/");
+    const paths = text
+      .split("\n")
+      .filter((l) => l.trim() && !l.trim().startsWith("#"))
+      .map((l) => l.trim().split(/\s+/)[0]);
+    for (const p of [
+      "/course/",
+      "/.github/instructors.json",
+      "/.github/CODEOWNERS",
+      "/.github/workflows/instructor-gate.yml",
+      "/server/tooling/workflow/check-instructor.mjs",
+      "/server/tooling/workflow/lib/check-instructor.mjs",
+    ]) {
+      expect(paths, `${p} in CODEOWNERS`).toContain(p);
+      // A renamed or deleted file would leave CODEOWNERS protecting nothing.
+      expect(existsSync(new URL(p.slice(1), root)), `${p} exists`).toBe(true);
+    }
+  });
+
+  it("runs the pull request gate from the base branch, so a PR cannot edit the gate that judges it", () => {
+    const workflow = readFileSync(new URL(".github/workflows/instructor-gate.yml", root), "utf8");
+    expect(workflow).toMatch(/^ {2}pull_request_target:/m);
+    expect(workflow).not.toMatch(/^ {2}pull_request:/m);
+    // Only the issues job may write issues.
+    expect(workflow.match(/issues: write/g)).toHaveLength(1);
   });
 });

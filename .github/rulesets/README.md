@@ -23,7 +23,7 @@ gh api -X POST repos/nd2003/sdm2026-1/rulesets --input .github/rulesets/main.jso
 
 ## Notes
 
-- `instructor gate` comes from `instructor-gate.yml`. It runs on every PR and passes when the PR does not use the `team-instructor` identity, so requiring it is safe. Like `release gate`, import the rulesets after the workflow is on `main`.
+- `instructor gate` comes from `instructor-gate.yml`, which runs from the base branch (`pull_request_target`). It runs on every PR and passes when the PR does not use the `team-instructor` identity, so requiring it is safe. Its first run, on the PR that adds it, fails with `Cannot find module .../check-instructor.mjs`, because the job checks out `main` and the script is not there yet; that is expected. Like `release gate`, import the rulesets only after the workflow is on `main` **and has passed once there**.
 - `main.json` sets `require_code_owner_review`, which is what makes `.github/CODEOWNERS` binding: the instructors listed there must approve changes under `course/` and to `.github/instructors.json`. The list in `CODEOWNERS` has to match `.github/instructors.json` (a test checks it).
 - The status check names must match the job names in `.github/workflows/`: `release gate` (`release-gate.yml`) and `🧰 setup`, `📝 config`, `🧹 lint`, `🔎 typecheck`, `🧪 test` and `📦 build` (`ci.yml`, emoji included). Rename a job and the ruleset (and `REQUIRED_CHECKS` in `server/tooling/check-release.mjs`) must change with it, or merging stops.
 - `release gate` only exists once `release-gate.yml` is on `main`. Import `prod.json` after that, or no PR into `prod` can ever pass.

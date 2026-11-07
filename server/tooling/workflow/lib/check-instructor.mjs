@@ -37,7 +37,7 @@ export function instructorClaims({ labels = [], title = "", body = "" }) {
   else if (t.toLowerCase().startsWith(`[${INSTRUCTOR_LABEL}]`))
     reasons.push("the [team-instructor] title prefix");
   const team = sectionsOf(body ?? "").find((s) => s.heading.toLowerCase() === "team");
-  if (team && team.body.trim().split(/\s+/)[0].replace(/[`*]/g, "") === INSTRUCTOR_LABEL) {
+  if (team && team.body.trim().split(/\s+/)[0].replace(/[`*]/g, "").toLowerCase() === INSTRUCTOR_LABEL) {
     reasons.push("team-instructor under '## Team'");
   }
   return reasons;
