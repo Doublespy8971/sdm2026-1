@@ -36,33 +36,38 @@ Railway is the only place the game is hosted. It deploys straight from the GitHu
    railway config apply
    ```
    **Read the plan before you apply.** Anything missing from `.railway/railway.ts` is deleted, so a plan that deletes something you did not expect means stop. The CLI refuses an environment the file does not manage. Paste the plan into the PR that changed the file.
-4. **Public addresses.** Give a public domain to each game service, and to nothing else:
+4. **Public address.** Give a public domain to the `gateway` service, and to nothing else, in each environment:
    ```bash
-   railway domain --service <service> --port 8080
+   railway domain --service gateway --port 8080
    ```
-   Write the addresses in the table below.
+   The games stay private: they answer the gateway on Railway's private network, and the gateway serves each one at `<address>/<game>` (for example `<address>/team-2`). Do not give a game a domain of its own: players would bypass the gateway. `.railway/railway.ts` cannot declare Railway's generated domains, so check by hand that only the gateway has one (the service's Settings, Networking). Write the two addresses in the table below.
 5. **People.** Add the platform team as Editors (they can deploy and change settings), everyone else as Viewers (read only), and keep Owner for the administrators. Ask Editors to link their GitHub account in Railway. Turn on **Require 2FA** in the workspace's People settings if the plan allows it.
-6. **Check it.** For every service, `curl https://<address>/health` must answer `ok` with the right `env` and the `sha` of the deployed commit. Then push a harmless commit to the branch and watch Railway wait for CI before it deploys.
+6. **Check it.** `curl https://<address>/health` (the gateway) must answer `ok` with the right `env` and the `sha` of its deployed commit. For every game, `curl https://<address>/<game>/health` must answer `ok` with the same `env` and the `sha` of that game's deployed commit. Then push a harmless commit to the branch and watch Railway wait for CI before it deploys.
 7. **Rehearse a rollback once in development.** Open the service's Deployments tab and redeploy the previous successful deployment. Production rollbacks are done the same way, before anything is fixed (see rule 9 in `CLAUDE.md`).
 
 | Environment | Service | Address |
 |---|---|---|
-| development | `template` | not set up yet |
-| production | `template` | not set up yet |
+| development | `gateway` (public) | not set up yet |
+| development | `template` (private) | `<development address>/template/`, not set up yet |
+| production | `gateway` (public) | not set up yet |
+| production | `template` (private) | `<production address>/template/`, not set up yet |
 
 ## Checking a release by hand
 
 The `release gate` check verifies that CI passed on the commit being released, that the PR has a Rollback plan and that it comes from `main`. It does not check that the development environment ran the commit, so whoever approves the release does:
 
 ```bash
-curl -s https://<development address>/health      # {"ok":true,"env":"development","sha":"<commit>", ...}
-git rev-parse origin/main                          # the commit the release PR carries
+gh pr view <release PR number> --json headRefOid -q .headRefOid                # the commit the release carries
+curl -s https://<development address>/<game>/health   # {"ok":true,"env":"development","sha":"<commit>", ...}
+curl -s https://<development address>/health          # the gateway's own sha
 ```
 
-- The two commits are the same: development ran it.
-- They differ: a service only redeploys when its watch paths changed. List what changed since the deployed commit, for the game's folder and the platform files in `PLATFORM_WATCH` (`.railway/railway.ts`). If nothing there changed, development is current:
+Do it for every game, and for the gateway.
+
+- The commits are the same: development ran it.
+- They differ: a service only redeploys when its watch paths changed. List what changed since the deployed commit, in the service's own folder and the platform paths in `PLATFORM_WATCH` (`.railway/railway.ts`; the gateway also watches `server/gateway/`). If nothing there changed, development is current for that service:
   ```bash
-  git diff --stat <sha from /health> origin/main -- server/core server/host package.json pnpm-lock.yaml <game folder>
+  git diff --stat <sha from /health> <release PR head> -- <the paths in PLATFORM_WATCH> <the service's folder>
   ```
 
 ## What we do not use
