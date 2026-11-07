@@ -36,7 +36,7 @@ Building a client or a game? Read [`docs/CLIENT_GUIDE.md`](docs/CLIENT_GUIDE.md)
 - Your config schema extends `RoomSettingsSchema`, and `config/game.json` sets `tickRate`, `patchRate`, `maxPlayers` and `reconnectSeconds` for your game.
 - Register rooms in `room/index.ts` as factories: `{ game: (deps) => createGameRoom(myGame, deps) }`.
 - Add game debug commands in `commands` (e.g. `spawn`, `tp`). Built-ins (`pause`, `step`, `timescale`, `seed`, `set`, `kick`) can't be overridden. All of them are recorded in replays and rejected in production.
-- Room tests import `boot` from `@sdm/host/testing`, never from `@colyseus/testing` directly, and use their own port.
+- Room tests import `boot` from `@sdm/host/testing`, never from `@colyseus/testing` directly, and call `boot(config)` without a port: it picks a free one, so test runs on the same machine never collide.
 
 ## Determinism rules (all game code)
 
