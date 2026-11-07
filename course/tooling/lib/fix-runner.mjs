@@ -20,7 +20,9 @@ export function runFixes({ root, repo, kind, apply, items }) {
   const tmp = tempDir();
   const counts = { edited: 0, commented: 0, failed: 0, touched: 0 };
   try {
-    for (const { plan, ownComment } of [...items].sort((a, b) => b.plan.number - a.plan.number)) {
+    for (const item of [...items].sort((a, b) => b.plan.number - a.plan.number)) {
+      const { ownComment } = item;
+      const plan = { ...item.plan, comment: keepFixedSection(item.plan.comment, ownComment?.body) };
       const hasChanges = Object.keys(plan.changes).length > 0;
       const commentChanged = plan.comment !== null && !sameComment(plan.comment, ownComment?.body);
       if (!hasChanges && !commentChanged) continue;
@@ -57,6 +59,22 @@ export function runFixes({ root, repo, kind, apply, items }) {
       : `\nDry run: ${counts.touched} ${what} would change. Nothing was changed; add --apply to make these changes on GitHub.`,
   );
   return counts;
+}
+
+const FIXED_SECTION = /\nFixed automatically:\n(?:- .*\n)+\n/;
+
+/**
+ * A run that fixes nothing new keeps the "Fixed automatically" list of the earlier comment, so the record
+ * of what was changed stays and the comment is not rewritten for nothing.
+ * @param {string | null} comment the new comment
+ * @param {string | null | undefined} previous the comment this tool left before
+ */
+export function keepFixedSection(comment, previous) {
+  if (!comment || !previous || FIXED_SECTION.test(comment)) return comment;
+  const old = FIXED_SECTION.exec(previous.replace(/\r\n/g, "\n"));
+  if (!old) return comment;
+  // The section goes after the bold title line and its blank line.
+  return comment.replace(/^(.*\n.*\n)\n/, `$1${old[0]}`);
 }
 
 const sameComment = (a, b) =>
