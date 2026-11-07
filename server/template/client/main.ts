@@ -12,8 +12,10 @@ import {
   createDebugOverlay,
   createFrameMeter,
   createLogBuffer,
+  formatServerStats,
   normalizeRoomCode,
   readClientParams,
+  trackRoomNetStats,
 } from "@sdm/core/client";
 import {
   ClientMessage,
@@ -23,6 +25,7 @@ import {
   type Notice,
   Routes,
   ServerMessage,
+  type DebugStats as ServerTickStats,
 } from "@sdm/core/shared";
 import { templateGame } from "../shared/game.ts";
 import type { SampleState } from "../shared/index.ts";
@@ -149,10 +152,16 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
     startOpen: params.debug,
     console: { send: (command) => room.send(ClientMessage.DebugCommand, command) },
   });
-  room.onMessage(ServerMessage.DebugStats, () => {});
   room.onMessage(ServerMessage.DebugResult, (result: DebugResult) => overlay.handleDebugResult(result));
+  // Ping, patches/s and bytes/s for the overlay; the server's tick timing arrives once a second.
+  const net = trackRoomNetStats(room);
+  let serverStats: ServerTickStats | null = null;
+  room.onMessage(ServerMessage.DebugStats, (stats: ServerTickStats) => {
+    serverStats = stats;
+  });
   room.onLeave(() => {
     left = true;
+    net.stop();
     showMessage("Disconnected. Refresh to rejoin.");
   });
 
@@ -192,17 +201,19 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
     if (!hud.dataset.locked)
       hud.textContent = `code ${state.code || "-"} · invite ${invite} · WASD/arrows to move`;
     const { fps, frameMs } = meter.frame(now);
-    overlay.update({
-      roomId: room.roomId,
-      roomCode: state.code || null,
-      playerId: room.sessionId,
-      tick: state.tick ?? null,
-      pingMs: null,
-      patchesPerSecond: null,
-      bytesPerSecond: null,
-      fps,
-      frameMs,
-    });
+    overlay.update(
+      {
+        roomId: room.roomId,
+        roomCode: state.code || null,
+        playerId: room.sessionId,
+        tick: state.tick ?? null,
+        ...net.read(now),
+        fps,
+        frameMs,
+      },
+      serverStats ? { server: formatServerStats(serverStats) } : {},
+      now,
+    );
     if (!left) requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
