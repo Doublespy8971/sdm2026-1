@@ -15,6 +15,7 @@ import { performance } from "node:perf_hooks";
 import {
   GameCodeError,
   generateRoomCode,
+  guestFingerprint,
   RoomStats,
   type RoomStatsSnapshot,
   Simulation,
@@ -23,6 +24,7 @@ import {
   type AppEnv,
   ClientMessage,
   DebugCommandSchema,
+  GUEST_ID_OPTION,
   isDebugEnabled,
   type Notice,
   newSeed,
@@ -166,18 +168,20 @@ export function createGameRoom<S extends BaseState, I, C extends RoomSettings>(
     }
 
     override onJoin(client: Client, options: unknown): void {
+      // Only the fingerprint goes further: the raw guest ID is a secret (see @sdm/core/shared guest.ts).
+      const guest = guestFingerprint((options as Record<string, unknown> | undefined)?.[GUEST_ID_OPTION]);
       try {
-        this.sim.join(client.sessionId, options);
+        this.sim.join(client.sessionId, options, guest);
       } catch (err) {
         if (err instanceof GameCodeError) {
           this.#fail(err);
           throw new Error("can't join: the room hit an error and closed");
         }
-        this.log.info({ playerId: client.sessionId, reason: errorMessage(err) }, "join rejected");
+        this.log.info({ playerId: client.sessionId, guest, reason: errorMessage(err) }, "join rejected");
         throw new Error(`can't join: ${errorMessage(err)}`);
       }
       this.peakPlayers = Math.max(this.peakPlayers, this.clients.length);
-      this.log.info({ playerId: client.sessionId, tick: this.state.tick }, "player joined");
+      this.log.info({ playerId: client.sessionId, guest, tick: this.state.tick }, "player joined");
     }
 
     override async onDrop(client: Client): Promise<void> {
