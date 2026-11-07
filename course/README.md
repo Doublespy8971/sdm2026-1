@@ -26,16 +26,16 @@ Every issue and pull request carries exactly one team label:
 
 ## Project boards
 
-Every team has its own GitHub Project with the issues and pull requests that carry its label. Issues and PRs are added to the boards by their team label, so label your work correctly.
+Every team has its own GitHub Project with the issues and pull requests that carry its label. The boards are also listed on the repository's **Projects** tab. Issues and PRs are added to the boards by their team label, so label your work correctly.
 
 | Board | Contents |
 |---|---|
-| [team-1](https://github.com/users/ferenc-munde/projects/3) | issues and PRs labeled `team-1` |
-| [team-2](https://github.com/users/ferenc-munde/projects/4) | issues and PRs labeled `team-2` |
-| [team-3](https://github.com/users/ferenc-munde/projects/5) | issues and PRs labeled `team-3` |
-| [team-4](https://github.com/users/ferenc-munde/projects/6) | issues and PRs labeled `team-4` |
-| [platform](https://github.com/users/ferenc-munde/projects/7) | issues and PRs labeled `platform` |
-| [All teams](https://github.com/users/ferenc-munde/projects/8) | every issue and PR; filter by team with `label:team-2` etc. |
+| [team-1](https://github.com/users/nd2003/projects/2) | issues and PRs labeled `team-1` |
+| [team-2](https://github.com/users/nd2003/projects/3) | issues and PRs labeled `team-2` |
+| [team-3](https://github.com/users/nd2003/projects/4) | issues and PRs labeled `team-3` |
+| [team-4](https://github.com/users/nd2003/projects/5) | issues and PRs labeled `team-4` |
+| [platform](https://github.com/users/nd2003/projects/6) | issues and PRs labeled `platform` |
+| [All teams](https://github.com/users/nd2003/projects/7) | every issue and PR; filter by team with `label:team-2` etc. |
 
 ## Tracking progress
 

@@ -32,9 +32,14 @@ export function route(rawUrl: string, games: readonly string[]): Route {
   return { kind: "proxy", game, url: rest + search };
 }
 
+/** How long a game may stay silent on an HTTP request before the gateway answers 502 itself. */
+export const UPSTREAM_TIMEOUT_MS = 30_000;
+
 export interface GatewayOptions {
   /** One structured log line per problem. Defaults to JSON on stdout. */
   log?: (fields: Record<string, unknown>) => void;
+  /** Idle time before a game's HTTP response is given up on (not applied to WebSockets). Default 30 s. */
+  upstreamTimeoutMs?: number;
 }
 
 const HTML = { "content-type": "text/html; charset=utf-8" };
@@ -45,6 +50,7 @@ const HTML = { "content-type": "text/html; charset=utf-8" };
  */
 export function createGateway(config: GatewayConfig, options: GatewayOptions = {}): Server {
   const log = options.log ?? ((fields) => console.log(JSON.stringify(fields)));
+  const upstreamTimeoutMs = options.upstreamTimeoutMs ?? UPSTREAM_TIMEOUT_MS;
   const gameOf = new WeakMap<object, string>();
 
   // xfwd appends the address that connected to the gateway (Railway's edge) to X-Forwarded-For; the game
@@ -60,6 +66,11 @@ export function createGateway(config: GatewayConfig, options: GatewayOptions = {
       } else {
         res.destroy();
       }
+    } else if (res.bytesWritten === 0) {
+      // A WebSocket upgrade that never got through: say 502, so the client can tell "game down" from a
+      // network drop, the same way the 404 for an unknown game does. After the handshake the socket is
+      // carrying WebSocket frames and must just be closed.
+      res.end("HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\n");
     } else {
       res.destroy();
     }
@@ -103,7 +114,8 @@ export function createGateway(config: GatewayConfig, options: GatewayOptions = {
       case "proxy":
         gameOf.set(req, r.game);
         req.url = r.url;
-        proxy.web(req, res, { target: config.upstream(r.game) });
+        // The timeout is for plain requests only: a WebSocket stays open, silent or not, for a whole game.
+        proxy.web(req, res, { target: config.upstream(r.game), proxyTimeout: upstreamTimeoutMs });
     }
   });
 
