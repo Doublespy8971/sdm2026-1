@@ -184,7 +184,7 @@ The repo has only two kinds of labels; there are no type, size or priority label
 | `team-1` … `team-4`, `platform`, `team-instructor` | exactly one on every issue and PR | you |
 | `stackpile`, `waiting-on.author`, `waiting-on.review`, `waiting-on.merge` | on open PRs only | the labeller |
 
-The **labeller** (`pnpm labels:prs`, the "PR labels" workflow) runs every 10 minutes and whenever a PR or review changes. It only touches these four labels, and removes them when a PR is closed or merged:
+The **labeller** (`pnpm labels:prs`, the "PR labels" workflow) relabels every PR whenever any PR or review changes, and every 10 minutes as a fallback. It only touches these four labels, and removes them when a PR is closed or merged:
 
 - `stackpile`: the PR is stacked on another PR (its base isn't `main`, `prod` or a `feature/team-N` branch). It merges after the PR below it.
 - Exactly one waiting label, checked in this order:

@@ -90,7 +90,7 @@ Why these rules exist:
 | `pnpm team:promote <N>` / `pnpm branches:sync` / `pnpm release` | Open the PR `feature/team-N` → `main`, `main` → each `feature/team-N` that is behind, or `main` → `prod` |
 | `pnpm env:status` / `pnpm env:wait <env> <sha>` | Compare the commit each Railway environment runs with `main` / `prod`, or wait until one runs a commit |
 | `pnpm labels:sync` | Make the repo's GitHub labels match `server/tooling/workflow/labels.json` (dry run; `--apply` to change) |
-| `pnpm labels:prs` | Update every PR's `stackpile` and `waiting-on.*` labels (`--dry-run`, `--number <n>`). The "PR labels" workflow runs it every 10 minutes |
+| `pnpm labels:prs` | Update every PR's `stackpile` and `waiting-on.*` labels (`--dry-run`, `--number <n>`). The "PR labels" workflow runs it for all PRs on every PR or review event, every 10 minutes and on demand |
 
 Run `pnpm preflight` before opening a PR. It must pass.
 
