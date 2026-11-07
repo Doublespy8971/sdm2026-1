@@ -17,6 +17,12 @@ These rules apply to every agent (and every human) working in this repository. T
 
 Work inside your own team's folder. Changes to another team's folder or to the shared folders need an issue that says why, on a line of its own (`Cross-team: <why>`), and a review from someone on the owning team.
 
+**`team-instructor` is reserved for the instructors.** Only the GitHub accounts in [`.github/instructors.json`](.github/instructors.json) may use it: the label, a title that starts with `[team-instructor]` or is written `type(team-instructor): ...`, and `team-instructor` under *Team* in a PR. Everybody else, AI agents included, uses their own team label. To change files under `course/` from another team, use your team's label (or `platform`) and add a line `Cross-team: <why>` to the issue. The account is what is checked, not who typed: an instructor's AI-assisted work is fine.
+
+- The `instructor gate` check runs on every pull request (it blocks the merge once the rulesets require it) and comments on issues. `pnpm check:instructor --kind pr|issue --number <n>` runs it by hand.
+- `pnpm workflow:classify` refuses the `team-instructor` label to any other account. Agents never work around it (for example with `--actor`): they stop and ask which label to use.
+- The instructors review everything under `course/` and any change to the list (`.github/CODEOWNERS`; binding once an admin imports the `main` ruleset).
+
 ## Tech stack
 
 Everyone uses the same stack. Don't introduce alternatives without an issue that explains why.
