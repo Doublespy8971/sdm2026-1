@@ -10,24 +10,33 @@
 //   node course/tooling/issue-report.mjs --json                  machine-readable output
 //   node course/tooling/issue-report.mjs --repo owner/name       another repository than the current one
 //
-// Exit codes: 0 report written, 2 usage error, 3 environment problem (gh missing or not logged in).
+//   node course/tooling/issue-report.mjs --fix                  dry run: shows how each failing issue would be fixed
+//   node course/tooling/issue-report.mjs --fix --apply          fixes the issues on GitHub and comments what is left
+//
+// --fix adds a missing team label when the title prefix names the team, and fixes a missing or malformed
+// prefix when the label names it (see lib/issue-fix.mjs). The rest goes into one comment per issue.
+//
+// Exit codes: 0 done, 1 some fixes failed, 2 usage error, 3 environment problem (gh missing or not
+// logged in).
 import { fileURLToPath } from "node:url";
 import { EXIT, parseArgs } from "../../server/tooling/workflow/lib/args.mjs";
 import { loadTypes } from "../../server/tooling/workflow/lib/types.mjs";
+import { runFixes } from "./lib/fix-runner.mjs";
 import { currentRepo, paginate } from "./lib/github.mjs";
+import { ISSUE_COMMENT_MARKER, planIssueFix } from "./lib/issue-fix.mjs";
 import { auditIssue, formatReport, groupByTeam } from "./lib/issue-report.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
-const { flags } = parseArgs(process.argv.slice(2), { boolean: ["json", "failing"] });
+const { flags } = parseArgs(process.argv.slice(2), { boolean: ["json", "failing", "fix", "apply"] });
 const str = (name) => (typeof flags[name] === "string" ? flags[name] : null);
 
 const STATES = { open: ["OPEN"], closed: ["CLOSED"], all: ["OPEN", "CLOSED"] };
 const state = str("state") ?? "all";
 const config = loadTypes(root);
 const team = str("team");
-if (!STATES[state] || (team && !config.teamLabels.includes(team))) {
+if (!STATES[state] || (team && !config.teamLabels.includes(team)) || (flags.apply && !flags.fix)) {
   console.error(
-    `usage: node course/tooling/issue-report.mjs [--state ${Object.keys(STATES).join("|")}] [--team ${config.teamLabels.join("|")}] [--failing] [--json] [--repo owner/name]`,
+    `usage: node course/tooling/issue-report.mjs [--state ${Object.keys(STATES).join("|")}] [--team ${config.teamLabels.join("|")}] [--failing] [--json] [--repo owner/name] [--fix [--apply]]`,
   );
   process.exit(EXIT.usage);
 }
@@ -45,6 +54,7 @@ const nodes = paginate(
           number title url state
           author { login }
           labels(first: 30) { nodes { name } }
+          comments(last: 50) { nodes { databaseId body viewerDidAuthor } }
         }
       }
     }
@@ -53,20 +63,28 @@ const nodes = paginate(
   (d) => d.repository.issues,
 );
 
-let results = nodes.map((i) =>
-  auditIssue({
-    issue: {
-      number: i.number,
-      title: i.title,
-      url: i.url,
-      state: i.state,
-      author: i.author?.login ?? "ghost",
-      labels: i.labels.nodes.map((l) => l.name),
-    },
-    config,
-  }),
-);
-if (team) results = results.filter((r) => r.team === team);
+const entries = nodes.map((i) => {
+  const issue = {
+    number: i.number,
+    title: i.title,
+    url: i.url,
+    state: i.state,
+    author: i.author?.login ?? "ghost",
+    labels: i.labels.nodes.map((l) => l.name),
+  };
+  const ownComment = i.comments.nodes.find((c) => c.viewerDidAuthor && c.body.includes(ISSUE_COMMENT_MARKER));
+  return { issue, result: auditIssue({ issue, config }), ownComment };
+});
+const selected = team ? entries.filter((e) => e.result.team === team) : entries;
+
+if (flags.fix === true) {
+  const items = selected
+    .filter((e) => !e.result.ok || e.ownComment)
+    .map((e) => ({ plan: planIssueFix({ issue: e.issue, config }), ownComment: e.ownComment }));
+  const { failed } = runFixes({ root, repo, kind: "issue", apply: flags.apply === true, items });
+  process.exit(failed > 0 ? EXIT.failed : EXIT.ok);
+}
+const results = selected.map((e) => e.result);
 
 const failingOnly = flags.failing === true;
 const groups = groupByTeam(results, config.teamLabels)
