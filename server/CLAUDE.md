@@ -68,7 +68,7 @@ Why these rules exist:
 
 | Command | What it does |
 |---|---|
-| `pnpm install` | Install everything (checks your Node version first) |
+| `pnpm install` | Install everything (checks your Node version first) and switch on the git hooks (see "Git hooks" below) |
 | `pnpm check:setup` | Check this machine's setup and explain how to fix problems (`--json` for scripts) |
 | `pnpm dev` | Run the template game: server on :2567, client on :5173 |
 | `pnpm --filter @team-N/game dev` | Run your team's game |
@@ -167,6 +167,20 @@ These do the steps of [Branches](../CLAUDE.md#branches) and [Deploying to Railwa
 The environment URLs aren't in the repository. Set `SDM_DEV_URL` and `SDM_PROD_URL` (the base URL of a game service, e.g. `https://<service>.up.railway.app`), or pass `--dev-url` / `--prod-url`. Without them `env:status` and `env:wait` exit with 3 and say what to set.
 
 A release, step by step: `pnpm release --issue <n>` opens the PR once CI is green on `main`; `pnpm env:status` (or `pnpm env:wait dev <sha>`) shows development runs that commit; someone else approves; a person merges; then `pnpm env:wait prod <merge commit>` shows production runs it.
+
+## Git hooks
+
+`pnpm install` points git at the repository's hooks in `.githooks/` (`git config core.hooksPath .githooks`, via `server/tooling/install-hooks.mjs`), so every commit and push is checked, by people and by every coding agent alike: they all go through git. Nothing else to install.
+
+| Hook | What it does |
+|---|---|
+| `commit-msg` | On a work branch (`<team-label>/<issue>-<description>`), adds `Refs #<issue>` to the message when it has no issue reference yet, in its own paragraph before any trailers. Then checks the message with the `check:commit` rules and refuses it with the reason and an example. Merge, revert and fixup messages pass untouched. It fills in the bare `Refs #` line from `.gitmessage`, works during a rebase reword, and never touches the diff `git commit -v` adds below the scissors line. |
+| `pre-push` | Runs `pnpm preflight:quick` (lint, typecheck, ownership) and, on a work branch, `pnpm check:branch --offline`. These look at the working tree, so they only run when you push the commit you have checked out (not for tags, deletions or another branch), and a failure doesn't block the push while you have uncommitted changes, or when the checks can't run on this machine (exit code 3, e.g. a base branch that isn't fetched). It says so each time; CI checks the pushed commits. |
+
+- Skip a hook once with `git commit --no-verify` or `git push --no-verify`. CI and the workflow checks still catch anything that was skipped.
+- The hooks are Node scripts (no bash), so they run on macOS, Windows (Git Bash) and Linux.
+- If you already use your own `core.hooksPath`, `pnpm install` leaves it alone and says how to switch to the repo's hooks. It does nothing in CI or outside a git checkout (a Railway build).
+- The rules live in `server/tooling/workflow/lib/hooks.mjs`, with tests next to the other workflow checks.
 
 ## CI
 
