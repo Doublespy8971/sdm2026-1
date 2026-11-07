@@ -20,7 +20,7 @@ flowchart LR
 |---|---|---|
 | `@sdm/core/shared` | client and server | Message names, routes, zod schemas (`InputEnvelopeSchema`, `BugReportSchema`, …) |
 | `@sdm/core/sim` | client and server | `BaseState`, `RoomSettingsSchema`, `GameDefinition` types |
-| `@sdm/core/client` | client | URL params, invite links, the `~` debug overlay with console and network stats, F8 bug reports, network simulation, interpolation, prediction (see [Client core](#client-core-sdmcoreclient)) |
+| `@sdm/core/client` | client | URL params, invite links, the server address for a game under a path, the `~` debug overlay with console and network stats, F8 bug reports, network simulation, interpolation, prediction (see [Client core](#client-core-sdmcoreclient)) |
 | `@sdm/core/server` | server, tests | `Simulation`, `runReplay` |
 | `@sdm/host` | server | `startGameServer`, `createGameRoom` |
 | `@sdm/host/testing` | tests | `boot` for room tests |
@@ -29,13 +29,25 @@ flowchart LR
 
 ```ts
 import { Client } from "@colyseus/sdk";
+import { serverUrlFromPage } from "@sdm/core/client";
 
 // Locally the server runs on :2567 (Vite on :5173). Deployed, the server serves the client.
 export const SERVER_URL =
-  import.meta.env.VITE_SERVER_URL ?? (import.meta.env.DEV ? "http://localhost:2567" : location.origin);
+  import.meta.env.VITE_SERVER_URL ??
+  (import.meta.env.DEV ? "http://localhost:2567" : serverUrlFromPage(location.href));
 
 const client = new Client(SERVER_URL);
 ```
+
+### Your game lives under a path
+
+In production every game is served under its own path, `<address>/team-N/`, behind the gateway (see [ARCHITECTURE.md](../ARCHITECTURE.md)). The gateway removes the prefix before the request reaches your server, so the server needs no change, but the client must not assume it sits at the root of the domain:
+
+1. **Server address from the page.** Use `serverUrlFromPage(location.href)` from `@sdm/core/client`, never `location.origin` (it drops `/team-N`). On a page one folder below the server root (for example `multiplayer/index.html`), pass `1`: `serverUrlFromPage(location.href, 1)`.
+2. **Relative assets.** Keep `base: "./"` in `vite.config.ts` (the template has it). With Vite's default `/`, the page asks for `/assets/...` and gets the gateway's 404 instead of your files.
+3. **No absolute links.** Write `href="multiplayer/"` or `href="./multiplayer/"`, not `href="/multiplayer/"`, and ``fetch(`${SERVER_URL}/path`)``, not `fetch("/path")`. A link that starts with `/` leaves your game.
+
+Check both ways: your game at the root of its own server, and behind the gateway at `/team-N/` (the local command is in the Gateway section of [ARCHITECTURE.md](../ARCHITECTURE.md)).
 
 Room name: whatever your `room/index.ts` registers. The template registers `"game"`.
 
@@ -178,6 +190,7 @@ const params = readClientParams(location.search);
 // ?room=QXTR&name=Ada&scenario=crowded&debug → { room: "QXTR", name: "Ada", scenario: "crowded", debug: true }
 normalizeRoomCode(" qxtr "); // "QXTR"; null when it isn't 4 letters from A–Z without I and O
 buildInviteLink(location.href, "QXTR"); // the current page with only ?room=QXTR
+serverUrlFromPage("https://host/team-2/?room=QXTR"); // "https://host/team-2": where the game's server is
 ```
 
 `params.room` is already checked with `normalizeRoomCode`, so an invalid code in a link comes back as `null`.

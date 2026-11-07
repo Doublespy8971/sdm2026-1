@@ -15,6 +15,7 @@ import {
   formatServerStats,
   normalizeRoomCode,
   readClientParams,
+  serverUrlFromPage,
   trackRoomNetStats,
 } from "@sdm/core/client";
 import {
@@ -30,9 +31,13 @@ import {
 import { templateGame } from "../shared/game.ts";
 import type { SampleState } from "../shared/index.ts";
 
-/** In local dev the server runs on :2567; deployed builds are served by the server itself. */
+/**
+ * In local dev the server runs on :2567; deployed builds are served by the server itself, possibly under
+ * a path (`<address>/team-2/` behind the gateway), so the address comes from the page, not `location.origin`.
+ */
 export const SERVER_URL: string =
-  import.meta.env.VITE_SERVER_URL ?? (import.meta.env.DEV ? "http://localhost:2567" : location.origin);
+  import.meta.env.VITE_SERVER_URL ??
+  (import.meta.env.DEV ? "http://localhost:2567" : serverUrlFromPage(location.href));
 
 const ROOM_NAME = "game";
 const TOKEN_KEY = "sdm:reconnectionToken";
