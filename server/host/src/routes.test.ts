@@ -59,14 +59,14 @@ const report: BugReport = {
 let close: (() => void) | undefined;
 afterEach(() => close?.());
 
-async function start(env: "development" | "production", trustProxyHops?: number) {
+async function start(env: "development" | "production") {
   const app = express();
   const registry = new LiveRoomRegistry();
   const stores = new MemoryStores({ budgetBytes: 50_000_000 });
   const log = captureLog();
   registry.add(liveRoom("live1", "QXTR"));
   registry.add(liveRoom("full1", "FULL", 2, 2));
-  registerRoutes(app, { env, stores, registry, gameId: "template", logger: log, trustProxyHops });
+  registerRoutes(app, { env, stores, registry, gameId: "template", logger: log });
   const server = app.listen(0);
   await new Promise((r) => server.once("listening", r));
   close = () => server.close();
@@ -106,37 +106,6 @@ describe("routes", () => {
     const { base } = await start("development");
     for (let i = 0; i < 10; i++) expect((await fetch(`${base}/api/replays/live1`)).status).toBe(200);
     expect((await fetch(`${base}/api/replays/live1`)).status).toBe(429);
-  });
-
-  // Behind the gateway the chain is: client, Railway's edge (appended by Railway), and the gateway's own
-  // peer (appended by the gateway). The test client plays the gateway, so it sends "client, edge".
-  describe("behind the gateway (two proxies)", () => {
-    const sendFrom = (base: string, forwardedFor: string) =>
-      fetch(`${base}/api/bug-reports`, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-forwarded-for": forwardedFor },
-        body: JSON.stringify(report),
-      });
-
-    it("with the default of one hop every player looks like Railway's edge and shares one limit", async () => {
-      const { base } = await start("development");
-      for (let i = 0; i < 5; i++)
-        expect((await sendFrom(base, `198.51.100.${i}, 10.9.9.9`)).status).toBe(201);
-      expect((await sendFrom(base, "198.51.100.77, 10.9.9.9")).status).toBe(429);
-    });
-
-    it("with two hops each player has their own limit", async () => {
-      const { base } = await start("development", 2);
-      for (let i = 0; i < 12; i++)
-        expect((await sendFrom(base, `198.51.100.${i}, 10.9.9.9`)).status).toBe(201);
-    });
-
-    it("with two hops one player still hits the limit, and a spoofed address in front does not help", async () => {
-      const { base } = await start("development", 2);
-      for (let i = 0; i < 5; i++)
-        expect((await sendFrom(base, `203.0.113.${i}, 198.51.100.5, 10.9.9.9`)).status).toBe(201);
-      expect((await sendFrom(base, "203.0.113.99, 198.51.100.5, 10.9.9.9")).status).toBe(429);
-    });
   });
 
   it("a spoofed X-Forwarded-For does not get around the bug report limit", async () => {

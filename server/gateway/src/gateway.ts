@@ -53,9 +53,10 @@ export function createGateway(config: GatewayConfig, options: GatewayOptions = {
   const upstreamTimeoutMs = options.upstreamTimeoutMs ?? UPSTREAM_TIMEOUT_MS;
   const gameOf = new WeakMap<object, string>();
 
-  // xfwd appends the address that connected to the gateway (Railway's edge) to X-Forwarded-For; the game
-  // trusts exactly that many hops (TRUST_PROXY_HOPS=2) and reads the real client one step further left.
-  const proxy = createProxyServer({ xfwd: true });
+  // No xfwd: X-Forwarded-For/-Proto/-Host go to the game exactly as Railway's edge set them. The game trusts
+  // one proxy and reads the last X-Forwarded-For entry, which is the edge's view of the player. Appending the
+  // gateway's own peer address would push that entry one step left and break the game's per-IP limits.
+  const proxy = createProxyServer();
   proxy.on("error", (err, req, res) => {
     const game = gameOf.get(req) ?? "unknown";
     log({ level: "error", msg: "upstream error", game, err: err.message });

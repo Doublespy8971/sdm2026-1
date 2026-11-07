@@ -16,9 +16,7 @@ let gateway: Server;
 let base: string;
 
 beforeAll(async () => {
-  // Two proxies sit in front of the game on Railway: the platform's edge, then the gateway. This has to be set
-  // before the host module is first imported, because it reads it once at load.
-  vi.stubEnv("TRUST_PROXY_HOPS", "2");
+  // APP_ENV is read once when the host module loads, so set it before the import.
   vi.stubEnv("APP_ENV", "development");
   const { createGameServer, createGameServerContext, createGameRoom } = await import("@sdm/host");
   const context = createGameServerContext("team-x", captureLog());
@@ -116,8 +114,9 @@ describe("a real game behind the gateway", () => {
   });
 
   it("gives every player their own rate-limit bucket: the game sees the real client address", async () => {
-    // Railway's edge puts the player's address in X-Forwarded-For; the gateway appends the edge's. With one
-    // trusted hop every player would look like the edge and the 6th report in a minute would be refused.
+    // Railway's edge puts the player's address last in X-Forwarded-For and the gateway passes it on untouched,
+    // so the game (trusting one proxy) tells players apart. If the gateway appended its own peer address,
+    // every player would look like the gateway and the 6th report in a minute would be refused.
     for (let i = 1; i <= 8; i++) expect((await postReport(`203.0.113.${i}`)).status).toBe(201);
   });
 
