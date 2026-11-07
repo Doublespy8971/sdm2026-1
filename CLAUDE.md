@@ -62,17 +62,17 @@ Railway is where the game is hosted. **Nothing is deployed until the go-live che
 
 ### Rules
 
-1. **Deploy only through the pipeline.** What runs on Railway is what was merged: `main` deploys to the development environment and `prod` to production (see [Branches](#branches)). Nobody deploys from a laptop (`railway up`), from a work branch, or by editing a service in the Railway dashboard. No workflow, bot or script may push or merge into `prod`, auto-merge stays off, and Railway's production environment follows the `prod` branch, never `main`.
+1. **Deploy only through the pipeline.** What runs on Railway is what was merged: `main` deploys to the development environment and `prod` to production (see [Branches](#branches)). **Only those two branches deploy**: no `feature/team-N` or other team branch is ever deployed. Nobody deploys from a laptop (`railway up`), from a work branch, or by editing a service in the Railway dashboard. No workflow, bot or script may push or merge into `prod`, auto-merge stays off, and Railway's production environment follows the `prod` branch, never `main`.
 2. **Gate before `main`.** A change reaches `main` only when CI and the Workflow checks are green and someone other than the author approved the PR. Railway services use Wait for CI (`checkSuites` in `.railway/railway.ts`), so a commit with a red check is never deployed.
 3. **Gate before `prod`.** A release PR (`main` into `prod`) goes ahead only when all of this is true:
    - CI is green on `main`.
    - The commit already ran in the development environment, and its `/health` reports that commit's SHA with `ok: true`.
    - The PR's *Rollback* section names the commit to go back to.
-   - Someone other than the author approved the PR, and the `production` GitHub Environment approved the deploy.
+   - Someone other than the author approved the PR (the `prod` ruleset requires it).
 
-   The `release gate` check verifies the first three automatically on every PR into `prod`.
+   The `release gate` check verifies the CI and Rollback bullets automatically on every PR into `prod`, and that it is a release from `main`. Whoever approves the release checks the development bullet by hand (see [server/docs/RAILWAY_SETUP.md](server/docs/RAILWAY_SETUP.md#checking-a-release-by-hand)).
 4. **Infrastructure is code.** Services, domains, variables and replicas are defined in `.railway/railway.ts` and changed through a reviewed PR that includes the `railway config plan` output. Don't use `railway.json` or `railway.toml`: Railway deprecated them and stops reading them on 2026-12-01. Anything missing from the file is deleted on apply, so every new service must be added there.
-5. **Secrets stay out of the repository.** Keys, tokens and passwords live in Railway variables (sealed, for secrets) or GitHub Actions secrets. Never commit them, paste them into an issue, PR or chat, or print them in logs. Only `.env.example` (names, no values) is committed.
+5. **Secrets stay out of the repository.** Keys, tokens and passwords live in Railway variables (sealed, for secrets). No workflow deploys, so nothing is kept in GitHub Actions secrets. Never commit them, paste them into an issue, PR or chat, or print them in logs. Only `.env.example` (names, no values) is committed.
 6. **Environments are separate.** Development and production use different variables, databases and domains. Never point development at production data, or the reverse. `APP_ENV` says where the code runs, and `/health` returns it together with the deployed SHA.
 7. **Every service has a `/health` endpoint.** It is Railway's health check. A deploy that is not healthy is not fixed by restarting it by hand: investigate, or roll back. Keep the endpoint fast and free of dependencies.
 8. **Keep it small.** One replica per service. No new service, database or paid add-on without an issue that says why and who pays for it.
@@ -88,27 +88,27 @@ These are what stop `main` from going to production on its own. Two of them ship
 | `prod` ruleset | Direct pushes, force pushes and deletion of `prod`; merging without an approving review or while a check is red; squash and rebase merges | `.github/rulesets/prod.json` | Needs an admin to import it (see the README in that folder) |
 | `main` ruleset | Direct pushes and force pushes to `main`; merging without a review or with red CI | `.github/rulesets/main.json` | Needs an admin to import it |
 | Auto-merge off | A release PR merging itself | Repository setting | Off today; an admin keeps it off |
-| Railway source branches | Production deploying `main` | `.railway/railway.ts` | Set up with #9 |
-| Wait for CI | A commit with a red check being deployed | `checkSuites` in `.railway/railway.ts` | Set up with #9 |
-| `production` environment | A production deploy without a human approval | GitHub Environment | Needs an admin |
+| Railway source branches | Production deploying `main` | `.railway/railway.ts` | In `.railway/railway.ts`; applied by a Railway owner (#161) |
+| Wait for CI | A commit with a red check being deployed | `checkSuites` in `.railway/railway.ts` | In `.railway/railway.ts`; applied by a Railway owner (#161) |
+| Railway deployment approval | A production deploy started by a GitHub account that is not linked to a Railway project member | Railway holds the deploy until a project member clicks Approve. It is a safety net, not a gate: a linked member deploys without it. Keep the project's members few | Needs a Railway project owner |
 
 Until the rulesets are imported, nothing technical stops a push to `prod` or a merge of a red PR. Follow the rules as if it did.
 
 ### Go-live checklist
 
-All of these are done before the first deploy. Items marked *(admin)* need the repository owner.
+All of these are done before the first deploy. Items marked *(admin)* need the repository owner. The steps are in [server/docs/RAILWAY_SETUP.md](server/docs/RAILWAY_SETUP.md) and tracked in #161.
 
 - [ ] CI and the Workflow checks pass on `main`.
 - [ ] `release-gate.yml` is on `main`, and the `prod` and `main` rulesets from `.github/rulesets/` are imported, in that order *(admin)*.
 - [ ] Auto-merge is off *(admin)*.
-- [ ] The Railway project is defined in `.railway/railway.ts`, production follows `prod` and development follows `main`, and the `railway config plan` output was reviewed (#9).
+- [ ] The Railway project is defined in `.railway/railway.ts`, production follows `prod` and development follows `main`, and the `railway config plan` output was reviewed (#161).
 - [ ] Wait for CI is on for every service.
-- [ ] The `production` GitHub Environment exists with a required reviewer *(admin)*.
-- [ ] The Railway GitHub app is installed on the repository, and the Railway tokens are stored as GitHub Actions secrets *(admin)*.
+- [ ] The Railway GitHub app is installed on the repository *(admin)*. No Railway token is needed in GitHub, because no workflow deploys.
+- [ ] The Railway project's members are set: the platform team as Editors, everyone else Viewers, Owner only for the administrators *(Railway project owner)*.
 - [ ] Variables are set in Railway, nothing secret is in the repository, and development and production use different values.
 - [ ] `/health` returns `env` and `sha` in every environment.
 - [ ] A rollback was rehearsed once in the development environment.
-- [ ] `server/ARCHITECTURE.md` describes the setup and how to promote a release (#9).
+- [ ] `server/docs/RAILWAY_SETUP.md` has the public address of every service, and a release was checked by hand once, as it describes.
 
 ## Workflow
 

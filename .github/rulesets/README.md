@@ -12,7 +12,6 @@ Branch rules that make the workflow in `CLAUDE.md` enforced instead of followed 
 1. Open **Settings → Rules → Rulesets → New ruleset → Import a ruleset**.
 2. Choose `prod.json`, review it and create it. Repeat for `main.json`.
 3. In **Settings → General → Pull Requests**, leave **Allow auto-merge** switched off (it is off today). Auto-merge on a release PR would defeat the point of the gate.
-4. In **Settings → Environments**, create `production` with a required reviewer (used by the production deploy, see "Deploying to Railway" in `CLAUDE.md`).
 
 Or from a terminal, as an admin:
 
