@@ -12,7 +12,7 @@ import { sectionsOf } from "./template.mjs";
 export const INSTRUCTOR_LABEL = "team-instructor";
 
 const ADVICE =
-  "Use your own team label. To change files under course/ from another team, use the 'platform' label (or your team's) and give the issue the 'cross-team' label with an explanation.";
+  "Use your own team label. To change files under course/ from another team, use the 'platform' label (or your team's) and add a line 'Cross-team: <why>' to the issue.";
 
 /** Loads .github/instructors.json. @param {string} root repo root @returns {string[]} lower-case logins */
 export function loadInstructors(root) {

@@ -22,7 +22,7 @@ pnpm workflow:classify --kind issue --json
 
 ## The team-instructor label
 
-`team-instructor` is reserved for the instructors (`.github/instructors.json`). The classifier refuses it, with an explanation, when the GitHub account is not on that list. **Do not work around it**: never pass `--actor`, never edit the list, never write the label by hand. Stop, tell the user which label you would use instead (their team's, or `platform`; for changes under `course/` from another team, also the `cross-team` label on the issue with an explanation) and continue with that.
+`team-instructor` is reserved for the instructors (`.github/instructors.json`). The classifier refuses it, with an explanation, when the GitHub account is not on that list. **Do not work around it**: never pass `--actor`, never edit the list, never write the label by hand. Stop, tell the user which label you would use instead (their team's, or `platform`; for changes under `course/` from another team, also a line `Cross-team: <why>` in the issue) and continue with that.
 
 ## 2. Fill the template
 

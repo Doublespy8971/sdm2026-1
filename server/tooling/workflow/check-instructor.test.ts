@@ -86,7 +86,7 @@ describe("checkInstructor", () => {
     expect(r.problems[0].rule).toBe("identity");
     expect(r.problems[0].message).toContain("reserved for the instructors");
     expect(r.problems[0].message).toContain("student is not on the list");
-    expect(r.problems[0].message).toContain("cross-team");
+    expect(r.problems[0].message).toContain("Cross-team: <why>");
   });
 
   it("blocks a title scope without the label", () => {
