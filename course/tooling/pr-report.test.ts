@@ -60,10 +60,14 @@ describe("teamOf", () => {
     expect(teamOf({ title: "[team-1] X", head: "team-1/1-x", labels: ["team-3"] }, labels)).toBe("team-3");
   });
   it("falls back to the title, then the branch", () => {
-    expect(teamOf({ title: "feat(team-1): add x", head: "x", labels: [] }, labels)).toBe("team-1");
     expect(teamOf({ title: "[team-1] X", head: "x", labels: [] }, labels)).toBe("team-1");
     expect(teamOf({ title: "X", head: "platform/4-x", labels: [] }, labels)).toBe("platform");
     expect(teamOf({ title: "X", head: "feature/team-4", labels: [] }, labels)).toBe("team-4");
+  });
+  it("reads the team from a conventional title's scope, and still from an old [team-N] prefix", () => {
+    expect(teamOf({ title: "feat(team-1): add x", head: "x", labels: [] }, labels)).toBe("team-1");
+    expect(teamOf({ title: "fix(platform)!: drop y", head: "x", labels: [] }, labels)).toBe("platform");
+    expect(teamOf({ title: "feat(game): add x", head: "x", labels: [] }, labels)).toBeNull();
   });
   it("returns null when nothing names a team", () => {
     expect(teamOf({ title: "[course] X", head: "1-x", labels: ["documentation"] }, labels)).toBeNull();
