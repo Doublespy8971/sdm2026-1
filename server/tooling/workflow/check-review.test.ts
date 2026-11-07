@@ -1,9 +1,9 @@
 // Tests for `pnpm check:review` (lib/check-review.mjs).
 import { describe, expect, it } from "vitest";
-import { checkReview } from "./lib/check-review.mjs";
+import { checkReview, latestDecisions } from "./lib/check-review.mjs";
 
 const review = (login: string, state: string, submittedAt: string) => ({
-  author: { login },
+  author: login,
   state,
   submittedAt,
 });
@@ -93,5 +93,14 @@ describe("check:review", () => {
       reviews: [{ author: null, state: "APPROVED", submittedAt: "2026-11-01T10:00:00Z" }],
     });
     expect(r.ok).toBe(false);
+  });
+
+  it("exposes each reviewer's latest decision", () => {
+    const latest = latestDecisions("alice", [
+      review("bob", "APPROVED", "2026-11-01T10:00:00Z"),
+      review("carol", "COMMENTED", "2026-11-01T11:00:00Z"),
+      review("alice", "APPROVED", "2026-11-01T12:00:00Z"),
+    ]);
+    expect([...latest]).toEqual([["bob", "APPROVED"]]);
   });
 });

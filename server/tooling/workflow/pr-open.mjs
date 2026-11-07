@@ -255,7 +255,7 @@ if (!classification.ok) {
 }
 const type = classification.type;
 const typeConfig = config.types[type];
-const labels = [label, typeConfig.githubLabel].filter(Boolean);
+const labels = [label]; // only the team label: see "Labels" in CLAUDE.md
 for (const w of classification.warnings) warnings.push(w);
 
 // 4. Title and body.

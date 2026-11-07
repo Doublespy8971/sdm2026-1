@@ -68,5 +68,14 @@ export function getPrReviews(number) {
   );
   if (out === null) return null;
   const d = JSON.parse(out);
-  return { number: d.number, url: d.url, author: d.author.login, reviews: d.reviews };
+  return {
+    number: d.number,
+    url: d.url,
+    author: d.author.login,
+    reviews: d.reviews.map((r) => ({
+      author: r.author?.login ?? null,
+      state: r.state,
+      submittedAt: r.submittedAt,
+    })),
+  };
 }
