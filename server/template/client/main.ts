@@ -45,8 +45,11 @@ export const SERVER_URL: string =
   (import.meta.env.DEV ? "http://localhost:2567" : serverUrlFromPage(location.href));
 
 const ROOM_NAME = "game";
-const TOKEN_KEY = "sdm:reconnectionToken";
-const CODE_KEY = "sdm:roomCode";
+// Every game shares one address behind the gateway, so the keys carry the game's path: a token or room code from
+// /team-2/ must never be tried on /team-4/ in the same tab.
+const SCOPE = new URL(SERVER_URL).pathname;
+const TOKEN_KEY = `sdm:${SCOPE}:reconnectionToken`;
+const CODE_KEY = `sdm:${SCOPE}:roomCode`;
 
 /** F8 bug reports open a pre-filled issue here, labelled with this team. Teams set their own label. */
 const ISSUE_REPO = "nd2003/sdm2026-1";

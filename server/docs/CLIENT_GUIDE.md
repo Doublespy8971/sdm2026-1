@@ -45,7 +45,9 @@ In production every game is served under its own path, `<address>/team-N/`, behi
 
 1. **Server address from the page.** Use `serverUrlFromPage(location.href)` from `@sdm/core/client`, never `location.origin` (it drops `/team-N`). On a page one folder below the server root (for example `multiplayer/index.html`), pass `1`: `serverUrlFromPage(location.href, 1)`.
 2. **Relative assets.** Keep `base: "./"` in `vite.config.ts` (the template has it). With Vite's default `/`, the page asks for `/assets/...` and gets the gateway's 404 instead of your files.
-3. **No absolute links.** Write `href="multiplayer/"` or `href="./multiplayer/"`, not `href="/multiplayer/"`, and ``fetch(`${SERVER_URL}/path`)``, not `fetch("/path")`. A link that starts with `/` leaves your game.
+3. **No absolute links.** Write `href="multiplayer/"` or `href="./multiplayer/"`, not `href="/multiplayer/"`, and ``fetch(`${SERVER_URL}/path`)``, not `fetch("/path")`. A link that starts with `/` leaves your game. The same goes for `new URL("/path", SERVER_URL)`: a leading `/` replaces the path of the base, so `https://host/team-2` becomes `https://host/path`. Build the address by joining strings, or use `serverLink(SERVER_URL, "/path")` from `@sdm/core/client`. End links to a folder with a slash (`multiplayer/`, not `multiplayer`): without it `express.static` redirects to `/multiplayer/` without the prefix, which leaves the game.
+4. **Keep browser storage per game.** All games share one address, so `sessionStorage` and `localStorage` are shared too. Put the game's path in every key, as the template does (`sdm:${new URL(SERVER_URL).pathname}:reconnectionToken`), or a token or room code saved by `/team-2/` is tried on `/team-4/`.
+5. **One page at `/`.** The game's page is served for every path that is not the API, so a deep link such as `/lobby/QXTR` loads `index.html`, whose relative assets then resolve under `/lobby/` and fail. Pass state in the query string (`/team-2/?room=QXTR`, as invite links do), not in the path. A second HTML page needs its own folder (`multiplayer/index.html`) and a trailing-slash link.
 
 Check both ways: your game at the root of its own server, and behind the gateway at `/team-N/` (the local command is in the Gateway section of [ARCHITECTURE.md](../ARCHITECTURE.md)).
 
@@ -184,13 +186,14 @@ Browser helpers every game can use, whatever draws it (Canvas, Phaser, Three.js)
 ### URL parameters and invite links
 
 ```ts
-import { buildInviteLink, normalizeRoomCode, readClientParams } from "@sdm/core/client";
+import { buildInviteLink, normalizeRoomCode, readClientParams, serverLink, serverUrlFromPage } from "@sdm/core/client";
 
 const params = readClientParams(location.search);
 // ?room=QXTR&name=Ada&scenario=crowded&debug → { room: "QXTR", name: "Ada", scenario: "crowded", debug: true }
 normalizeRoomCode(" qxtr "); // "QXTR"; null when it isn't 4 letters from A–Z without I and O
 buildInviteLink(location.href, "QXTR"); // the current page with only ?room=QXTR
 serverUrlFromPage("https://host/team-2/?room=QXTR"); // "https://host/team-2": where the game's server is
+serverLink("https://host/team-2", "/api/replays/r1"); // "https://host/team-2/api/replays/r1": a path below it, prefix kept
 ```
 
 `params.room` is already checked with `normalizeRoomCode`, so an invalid code in a link comes back as `null`.
