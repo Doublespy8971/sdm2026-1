@@ -21,6 +21,8 @@ export interface RouteDeps {
   gameId: string;
   logger: RoomLog;
   processStats?: ProcessStats;
+  /** Proxies in front of the server, see TRUST_PROXY_HOPS in env.ts. Defaults to 1: Railway's edge only. */
+  trustProxyHops?: number;
 }
 
 export function registerRoutes(app: Application, deps: RouteDeps): ProcessStats {
@@ -28,9 +30,9 @@ export function registerRoutes(app: Application, deps: RouteDeps): ProcessStats 
   const processStats = deps.processStats ?? new ProcessStats(registry, stores);
   const allowBugReport = rateLimiter(BUG_REPORTS_PER_MINUTE, MINUTE_MS);
   const allowReplay = rateLimiter(LIVE_REPLAYS_PER_MINUTE, MINUTE_MS);
-  // Railway adds one proxy hop. Trust only that one, so req.ip is the address Railway saw and a
-  // client can't pick its own by sending X-Forwarded-For.
-  app.set("trust proxy", 1);
+  // Railway adds one proxy hop, and the gateway a second one when a game is served behind it. Trust only
+  // those, so req.ip is the address Railway saw and a client can't pick its own by sending X-Forwarded-For.
+  app.set("trust proxy", deps.trustProxyHops ?? 1);
 
   app.get("/api/replays/:roomId", (req, res) => {
     const roomId = req.params.roomId;

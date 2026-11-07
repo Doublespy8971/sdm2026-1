@@ -9,7 +9,7 @@ import { monitor } from "@colyseus/monitor";
 import config from "@colyseus/tools";
 import { type HealthResponse, isDebugEnabled, Routes } from "@sdm/core/shared";
 import express from "express";
-import { APP_ENV, GIT_SHA, STARTED_AT } from "./env.ts";
+import { APP_ENV, GIT_SHA, STARTED_AT, TRUST_PROXY_HOPS } from "./env.ts";
 import { type GameRoomDeps, LiveRoomRegistry, type RoomClass, type RoomLog } from "./gameRoom.ts";
 import { createLogger } from "./logger.ts";
 import type { ProcessStats } from "./processStats.ts";
@@ -99,6 +99,7 @@ export function createGameServer(
         registry: context.registry,
         gameId,
         logger: context.logger,
+        trustProxyHops: TRUST_PROXY_HOPS,
       });
       if (isDebugEnabled(env)) app.use("/colyseus", monitor());
 
