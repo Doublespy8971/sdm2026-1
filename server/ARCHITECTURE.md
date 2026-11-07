@@ -81,7 +81,7 @@ One address, one path per game. The gateway is the only public service of an env
 
 ## Environments (Railway)
 
-Defined in [`.railway/railway.ts`](../.railway/railway.ts): one project `sdm2026-1`, one service per game, one replica each in `europe-west4`.
+Defined in [`.railway/railway.ts`](../.railway/railway.ts): one project `sdm2026-1`, the gateway and one service per game, one replica each in `europe-west4`.
 
 | Environment | Deploys | `APP_ENV` |
 |---|---|---|
@@ -91,4 +91,6 @@ Defined in [`.railway/railway.ts`](../.railway/railway.ts): one project `sdm2026
 - Watch paths: a service redeploys only when its game folder or the platform it runs on changes; Markdown and test files never redeploy.
 - Build `pnpm --filter <game> build`, start `node --import tsx <game>/server.ts`, health check `/health`, 15 s draining after SIGTERM, never sleeps.
 - Change the file in a platform PR with the `railway config plan` output for both environments, then apply from an up-to-date `main`: `railway link`, then `railway config plan` and `railway config apply`. Anything missing from the file is deleted on apply.
-- Add a team's game to `GAMES` once its package is on `main`. Domains: `railway domain --service <game> --port 8080` per environment.
+- Add a team's game to `GAMES` once its package is on `main`. The same list tells the gateway which games to serve (`GAMES`), and the teams not in it yet are shown as "not released yet" (`PLANNED_GAMES`).
+- Domains: **only the gateway is public**, per environment: `railway domain --service gateway --port 8080`. A game gets no domain; it answers the gateway at `http://<game>.railway.internal:8080`. `.railway/railway.ts` cannot declare Railway's generated domains, so this is checked by hand (`railway domain` per service, see `server/docs/RAILWAY_SETUP.md`). It is hygiene, not a safety net: a game reached directly behaves the same, because the gateway passes `X-Forwarded-For` through untouched. A team's game is then at `<address>/<service>`, for example `<address>/team-2`.
+- Every service in an environment follows that environment's branch, so production serves all teams from `prod` and no team branch is deployed. Updating one team's game redeploys only that game; adding a game to `GAMES` also redeploys the gateway, because its `GAMES` variable changed.
