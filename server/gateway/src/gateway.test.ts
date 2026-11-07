@@ -232,14 +232,24 @@ describe("the gateway", () => {
     expect(a.seen[0]).toMatchObject({ method: "POST", url: "/api/bug-reports", body: '{"title":"stuck"}' });
   });
 
-  it("appends the address it saw to X-Forwarded-For, and sets the protocol and host", async () => {
+  it("passes X-Forwarded-For, -Proto and -Host through as Railway's edge set them, and adds nothing", async () => {
     const a = await fakeGame("team-2");
-    const { base, port } = await gatewayFor({ "team-2": a.url });
-    await fetch(`${base}/team-2/`, { headers: { "x-forwarded-for": "198.51.100.7" } });
+    const { base } = await gatewayFor({ "team-2": a.url });
+    await fetch(`${base}/team-2/`, {
+      headers: {
+        "x-forwarded-for": "203.0.113.9, 198.51.100.7",
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "game.example",
+      },
+    });
     const h = a.seen[0]?.headers;
-    expect(h?.["x-forwarded-for"]).toMatch(/^198\.51\.100\.7,.*127\.0\.0\.1$/);
-    expect(h?.["x-forwarded-proto"]).toBe("http");
-    expect(h?.["x-forwarded-host"]).toBe(`127.0.0.1:${port}`);
+    // The last entry is the one the edge appended: the game, trusting one proxy, reads it as the player.
+    expect(h?.["x-forwarded-for"]).toBe("203.0.113.9, 198.51.100.7");
+    expect(h?.["x-forwarded-proto"]).toBe("https");
+    expect(h?.["x-forwarded-host"]).toBe("game.example");
+
+    await fetch(`${base}/team-2/`); // no edge in front (a local run): the gateway invents no address
+    expect(a.seen[1]?.headers["x-forwarded-for"]).toBeUndefined();
   });
 
   it("answers 502 with a readable page when the game is not reachable, and logs it", async () => {
