@@ -30,6 +30,7 @@
     "check:config": "node server/tooling/workflow/check-config.mjs",
     "check:determinism": "node server/tooling/workflow/check-determinism.mjs",
     "check:contract": "node server/tooling/workflow/check-contract.mjs",
+    "check:review": "node server/tooling/workflow/check-review.mjs",
     "team:set": "node server/tooling/workflow/team-set.mjs",
     "issue:start": "node server/tooling/workflow/issue-start.mjs",
     "pr:open": "node server/tooling/workflow/pr-open.mjs",
