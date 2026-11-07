@@ -4,11 +4,12 @@ Railway is the only place the game is hosted. It deploys straight from the GitHu
 
 ## How a change reaches Railway
 
+**Only two branches deploy: `prod` (production) and `main` (development).** No `feature/team-N` or other team branch is ever deployed to Railway. Nothing on `main` reaches production by itself: a release PR from `main` into `prod` is what changes production.
+
 | Merged into | Railway deploys | Environment |
 |---|---|---|
 | `main` | each game service whose files changed, once CI passed on the commit | development |
 | `prod` (a release PR from `main`) | the same, from `prod` | production |
-| `feature/team-N` (once the teams environment exists) | that team's service | teams |
 
 - **Wait for CI** is on: a deploy starts only after every GitHub check on the commit passed.
 - A service redeploys only when its game folder or the platform it runs on changed (the watch paths in `.railway/railway.ts`). A commit that only touches Markdown or tests redeploys nothing.
@@ -24,10 +25,9 @@ Railway is the only place the game is hosted. It deploys straight from the GitHu
 ## One-time setup, in order
 
 1. **Project.** Create the Railway project in the workspace that will pay for it (the config calls it `sdm2026-1`). Two-factor enforcement for the workspace needs the Pro plan.
-2. **Environments.** `production` exists by default. Add the others:
+2. **Environments.** `production` exists by default. Add the development one:
    ```bash
    railway environment new development
-   railway environment new teams        # only after the teams environment is merged into main
    ```
 3. **Apply the config, one environment at a time.** From an up-to-date `main`:
    ```bash
@@ -49,7 +49,6 @@ Railway is the only place the game is hosted. It deploys straight from the GitHu
 |---|---|---|
 | development | `template` | not set up yet |
 | production | `template` | not set up yet |
-| teams | `team-2`, `team-4` | not set up yet |
 
 ## Checking a release by hand
 
@@ -68,6 +67,7 @@ git rev-parse origin/main                          # the commit the release PR c
 
 ## What we do not use
 
+- **Deploying team branches.** `feature/team-N` and every other team branch are never deployed to Railway, and there is no environment for them. A team sees its work running only after it reaches `main` (development).
 - **A GitHub Environment or Railway tokens in GitHub secrets.** They would only matter if a GitHub Actions workflow deployed, and none does. Do not add either; if a workflow ever applies the config, use a Railway *project* token (scoped to one environment) and store it in GitHub's secret store.
 - **`railway.json` or `railway.toml`.** Railway deprecated them and stops reading them on 2026-12-01. The config is `.railway/railway.ts`.
 - **Per-team Railway projects, a staging environment and a Promote workflow.** That was the first plan (#9). The repository has one project and the environments above.

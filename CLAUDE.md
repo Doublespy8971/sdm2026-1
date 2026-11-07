@@ -56,7 +56,7 @@ Railway is where the game is hosted. **Nothing is deployed until the go-live che
 
 ### Rules
 
-1. **Deploy only through the pipeline.** What runs on Railway is what was merged: `main` deploys to the development environment and `prod` to production (see [Branches](#branches)). Nobody deploys from a laptop (`railway up`), from a work branch, or by editing a service in the Railway dashboard. No workflow, bot or script may push or merge into `prod`, auto-merge stays off, and Railway's production environment follows the `prod` branch, never `main`.
+1. **Deploy only through the pipeline.** What runs on Railway is what was merged: `main` deploys to the development environment and `prod` to production (see [Branches](#branches)). **Only those two branches deploy**: no `feature/team-N` or other team branch is ever deployed. Nobody deploys from a laptop (`railway up`), from a work branch, or by editing a service in the Railway dashboard. No workflow, bot or script may push or merge into `prod`, auto-merge stays off, and Railway's production environment follows the `prod` branch, never `main`.
 2. **Gate before `main`.** A change reaches `main` only when CI and the Workflow checks are green and someone other than the author approved the PR. Railway services use Wait for CI (`checkSuites` in `.railway/railway.ts`), so a commit with a red check is never deployed.
 3. **Gate before `prod`.** A release PR (`main` into `prod`) goes ahead only when all of this is true:
    - CI is green on `main`.
