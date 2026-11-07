@@ -112,3 +112,32 @@ An issue passes when both of these are true (the rules from "Issue first" in [CL
 An issue is listed under its team label. If it has none or several, it is listed under the team named in its title prefix, and under *(no team)* if there is none. The report only looks at the title and the labels, not the description, because older issues were written before the issue templates existed.
 
 **When to run it:** the instructors run `node course/tooling/issue-report.mjs --state open --failing` at the end of each day, and once more without options before the evaluation. Fix what it lists by adding the missing team label or editing the title; closed issues can be fixed too. Nothing runs automatically and nothing is posted to the issues, so the result stays in the console or wherever it is pasted.
+
+### Student activity report
+
+For the instructors, one command scores every student from 1 (weak) to 5 (strong), with the key numbers and a justification:
+
+```bash
+node course/tooling/student-report.mjs > .private/student-scores.md
+node course/tooling/student-report.mjs --json > .private/student-scores.json   # e.g. as input for an AI evaluator
+```
+
+**The output contains individual scores and this repository is public: never commit it.** Keep it in `.private/`, which git ignores. Like the PR report, it needs the GitHub CLI, logged in.
+
+The score uses the criteria above that can be measured per person, from 0 to 10 points. *Result* (does the game run) is a team criterion and is not part of it.
+
+| Area | Points | Rule |
+|---|---|---|
+| **Delivery** | 0–4 | Merged PRs authored: 5 or more → 4, 2–4 → 3, 1 → 2. No merged PR but an open one → 1. |
+| **Process** | 0–3 | +1 if at least half of your PRs pass the PR documentation report; +1 if at least 80% of your commits reference an issue (`Refs #N` on its own line); +1 if every issue you opened has a team label and a matching `[team-…]` title. |
+| **Collaboration** | 0–3 | Reviewed other people's PRs: 5 or more → 2, 1–4 → 1. +1 for commenting on other people's issues or PRs. |
+
+Points become the score: 0 → **1**, 1–2 → **2**, 3–4 → **3**, 5–7 → **4**, 8–10 → **5**. Instructors, organizer accounts and AI agents are not scored.
+
+Keep in mind when you use it:
+
+- Only work visible on GitHub counts. Pair programming, work on a teammate's machine or unpushed work doesn't show up.
+- Commits co-authored by an AI agent (the course is AI first) count for the PR author. A commit that appears in several PRs (work branch → `feature/team-N` → `main`) is counted once.
+- Lines of code are shown for context and are not scored.
+- Rules that changed during the hackathon (for example the PR title format) make older PRs fail the documentation report through no fault of the author. Take that into account, as for the PR report.
+- Admin work, for example by the repository owner, doesn't show up in issues, PRs or reviews.
