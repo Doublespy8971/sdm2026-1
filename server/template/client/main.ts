@@ -13,6 +13,7 @@ import {
   createFrameMeter,
   createLogBuffer,
   formatServerStats,
+  getGuestId,
   normalizeRoomCode,
   readClientParams,
   trackRoomNetStats,
@@ -45,6 +46,8 @@ const TEAM_LABEL = "platform";
 const app = document.getElementById("app") as HTMLElement;
 const params = readClientParams(location.search);
 const client = new Client(SERVER_URL);
+/** Same in every tab and after a reload: the room shows its fingerprint as `seats[id].guest`. */
+const guestId = getGuestId();
 // Recent console output goes into F8 bug reports.
 const logs = createLogBuffer();
 logs.captureConsole();
@@ -79,7 +82,7 @@ async function joinByCode(raw: string): Promise<Room<SampleState>> {
   });
   if (!res.ok) throw new Error(((await res.json()) as { error?: string }).error ?? `HTTP ${res.status}`);
   const { roomId } = JoinByCodeResponseSchema.parse(await res.json());
-  return client.joinById<SampleState>(roomId, { name: params.name ?? "player" });
+  return client.joinById<SampleState>(roomId, { name: params.name ?? "player", guestId });
 }
 
 function showLobby(health: BuildInfo, error?: string): void {
@@ -92,7 +95,7 @@ function showLobby(health: BuildInfo, error?: string): void {
   const fail = (err: unknown) => showLobby(health, err instanceof Error ? err.message : String(err));
   app.querySelector("#create")?.addEventListener("click", () => {
     client
-      .create<SampleState>(ROOM_NAME, { private: true, name: params.name ?? "player" })
+      .create<SampleState>(ROOM_NAME, { private: true, name: params.name ?? "player", guestId })
       .then((room) => play(room, health), fail);
   });
   app.querySelector("#join")?.addEventListener("click", () => {
@@ -211,7 +214,11 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
         fps,
         frameMs,
       },
-      serverStats ? { server: formatServerStats(serverStats) } : {},
+      {
+        // The public fingerprint of guestId: two tabs of this browser show the same value.
+        guest: state.seats?.get(room.sessionId)?.guest || "-",
+        ...(serverStats ? { server: formatServerStats(serverStats) } : {}),
+      },
       now,
     );
     if (!left) requestAnimationFrame(frame);
