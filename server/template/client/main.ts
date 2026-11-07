@@ -19,6 +19,7 @@ import {
   normalizeRoomCode,
   readClientParams,
   readNetConditions,
+  serverUrlFromPage,
   trackRoomNetStats,
 } from "@sdm/core/client";
 import {
@@ -35,13 +36,20 @@ import { templateGame } from "../shared/game.ts";
 import type { SampleState } from "../shared/index.ts";
 import { createTemplateNetcode } from "./netcode.ts";
 
-/** In local dev the server runs on :2567; deployed builds are served by the server itself. */
+/**
+ * In local dev the server runs on :2567; deployed builds are served by the server itself, possibly under
+ * a path (`<address>/team-2/` behind the gateway), so the address comes from the page, not `location.origin`.
+ */
 export const SERVER_URL: string =
-  import.meta.env.VITE_SERVER_URL ?? (import.meta.env.DEV ? "http://localhost:2567" : location.origin);
+  import.meta.env.VITE_SERVER_URL ??
+  (import.meta.env.DEV ? "http://localhost:2567" : serverUrlFromPage(location.href));
 
 const ROOM_NAME = "game";
-const TOKEN_KEY = "sdm:reconnectionToken";
-const CODE_KEY = "sdm:roomCode";
+// Every game shares one address behind the gateway, so the keys carry the game's path: a token or room code from
+// /team-2/ must never be tried on /team-4/ in the same tab.
+const SCOPE = new URL(SERVER_URL).pathname;
+const TOKEN_KEY = `sdm:${SCOPE}:reconnectionToken`;
+const CODE_KEY = `sdm:${SCOPE}:roomCode`;
 
 /** F8 bug reports open a pre-filled issue here, labelled with this team. Teams set their own label. */
 const ISSUE_REPO = "nd2003/sdm2026-1";
