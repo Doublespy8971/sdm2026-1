@@ -5,6 +5,23 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { collectEvidence, formatEvidence } from "./evidence.mjs";
 
+function runTempGit(args: string[], cwd: string) {
+  const command = args[0] === "commit" ? ["-c", "commit.gpgsign=false", ...args] : args;
+  return execFileSync("git", command, {
+    cwd,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      GIT_AUTHOR_NAME: "qa-test",
+      GIT_AUTHOR_EMAIL: "qa-test@example.com",
+      GIT_COMMITTER_NAME: "qa-test",
+      GIT_COMMITTER_EMAIL: "qa-test@example.com",
+      GIT_CONFIG_GLOBAL: "/dev/null",
+      GIT_CONFIG_SYSTEM: "/dev/null",
+    },
+  }).trim();
+}
+
 describe("qa:evidence", () => {
   it("reports changed tests, results, scenarios, and replay ids", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "qa-evidence-"));
@@ -47,22 +64,22 @@ describe("qa:evidence", () => {
     const seed = join(root, "seed");
     const origin = join(root, "origin.git");
     const cwd = join(root, "work");
-    const git = (args: string[], directory: string) =>
-      execFileSync("git", args, { cwd: directory, encoding: "utf8" }).trim();
     try {
       await mkdir(seed, { recursive: true });
-      git(["init", "-b", "main"], seed);
-      git(["config", "user.email", "qa@example.test"], seed);
-      git(["config", "user.name", "QA"], seed);
+      runTempGit(["init", "-b", "main"], seed);
       await writeFile(join(seed, "README.md"), "base\n");
-      git(["add", "."], seed);
-      git(["commit", "-m", "base"], seed);
-      git(["clone", "--bare", seed, origin], root);
-      git(["clone", origin, cwd], root);
-      git(["checkout", "-b", "feature"], cwd);
+      runTempGit(["add", "."], seed);
+      runTempGit(["commit", "-m", "base"], seed);
+      runTempGit(["init", "--bare", origin], root);
+      runTempGit(["remote", "add", "origin", origin], seed);
+      runTempGit(["push", "origin", "main"], seed);
+      runTempGit(["clone", origin, cwd], root);
+      runTempGit(["fetch", "origin", "main"], cwd);
+      runTempGit(["checkout", "main"], cwd);
+      runTempGit(["checkout", "-b", "feature"], cwd);
       await writeFile(join(cwd, "changed.test.ts"), "test\n");
-      git(["add", "."], cwd);
-      git(["commit", "-m", "test"], cwd);
+      runTempGit(["add", "."], cwd);
+      runTempGit(["commit", "-m", "test"], cwd);
 
       const evidence = await collectEvidence({ cwd });
       expect(evidence.base).toBe("origin/main");
