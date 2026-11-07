@@ -3,18 +3,25 @@
   "target": "branch",
   "enforcement": "active",
   "conditions": {
-    "ref_name": { "include": ["refs/heads/main"], "exclude": [] }
+    "ref_name": {
+      "include": ["refs/heads/main"],
+      "exclude": []
+    }
   },
   "bypass_actors": [],
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
     {
       "type": "pull_request",
       "parameters": {
         "required_approving_review_count": 1,
         "dismiss_stale_reviews_on_push": true,
-        "require_code_owner_review": false,
+        "require_code_owner_review": true,
         "require_last_push_approval": true,
         "required_review_thread_resolution": true
       }
@@ -24,12 +31,27 @@
       "parameters": {
         "strict_required_status_checks_policy": false,
         "required_status_checks": [
-          { "context": "🧰 setup" },
-          { "context": "📝 config" },
-          { "context": "🧹 lint" },
-          { "context": "🔎 typecheck" },
-          { "context": "🧪 test" },
-          { "context": "📦 build" }
+          {
+            "context": "\ud83e\uddf0 setup"
+          },
+          {
+            "context": "\ud83d\udcdd config"
+          },
+          {
+            "context": "\ud83e\uddf9 lint"
+          },
+          {
+            "context": "\ud83d\udd0e typecheck"
+          },
+          {
+            "context": "\ud83e\uddea test"
+          },
+          {
+            "context": "\ud83d\udce6 build"
+          },
+          {
+            "context": "instructor gate"
+          }
         ]
       }
     }

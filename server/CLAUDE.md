@@ -77,6 +77,7 @@ Why these rules exist:
 | `pnpm test` | Vitest across every package |
 | `pnpm build` | Build every game's client |
 | `pnpm workflow:classify --kind issue\|pr\|commit` | Decide the type, team label, template and base branch for a change (`--json` for scripts; see "Templates, classification and checks" in `CLAUDE.md`) |
+| `pnpm check:instructor --kind pr\|issue --number <n>` | Check that the `team-instructor` identity is only used by the accounts in `.github/instructors.json` |
 | `pnpm check:issue` / `pnpm check:pr` / `pnpm check:commit` | Check an issue, a pull request or commit messages against their template or format |
 | `pnpm preflight` | Everything a branch must pass before it becomes a PR (see "Preflight" below) |
 | `pnpm preflight:quick` | Lint, typecheck and ownership in a few seconds. Agents run it after every change |
@@ -110,3 +111,5 @@ Every pull request and every push to `main` runs the **CI** checks (`.github/wor
 - Actions are pinned to commit SHAs. Update them through a platform PR.
 
 A second workflow, **Workflow checks** (`.github/workflows/workflow-checks.yml`), runs `pnpm check:pr` and `pnpm check:commit` on every pull request: title, team label, branch and base names, template headings, linked issue, ticked checklist and the commit message format. It also runs the branch-level preflight checks (`check:branch`, `check:ownership`, `check:files`, `check:secrets`, `check:docs`, `check:determinism`, `check:contract`); `ci.yml` runs `check:config` after install. It reruns when the title or description is edited, so fix the text and the check turns green.
+
+A third workflow, **Instructor gate** (`.github/workflows/instructor-gate.yml`), runs `pnpm check:instructor` on every pull request and on issues: the `team-instructor` label, title forms and *Team* section may only be used by the accounts in `.github/instructors.json`. On a PR the job fails; on an issue it leaves a comment. The script and the list always come from `main`, so a PR cannot add its author to the list.

@@ -33,7 +33,8 @@
     "preflight": "node server/tooling/workflow/preflight.mjs",
     "preflight:quick": "node server/tooling/workflow/preflight.mjs --quick",
     "qa:bots": "node scripts/qa/bots.mjs",
-    "qa:multi": "node scripts/qa/multi.mjs"
+    "qa:multi": "node scripts/qa/multi.mjs",
+    "check:instructor": "node server/tooling/workflow/check-instructor.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",

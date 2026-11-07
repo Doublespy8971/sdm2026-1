@@ -1,0 +1,6 @@
+# The instructors review everything under course/ and who may use the team-instructor identity.
+# GitHub only enforces this when the `main` ruleset requires code owner review (.github/rulesets/main.json).
+# Keep the owners in sync with .github/instructors.json (a test checks it).
+/course/                    @ferenc-munde @matyas-munde @samate-cclab
+/.github/instructors.json   @ferenc-munde @matyas-munde @samate-cclab
+/.github/CODEOWNERS         @ferenc-munde @matyas-munde @samate-cclab

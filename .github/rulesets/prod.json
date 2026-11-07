@@ -3,12 +3,19 @@
   "target": "branch",
   "enforcement": "active",
   "conditions": {
-    "ref_name": { "include": ["refs/heads/prod"], "exclude": [] }
+    "ref_name": {
+      "include": ["refs/heads/prod"],
+      "exclude": []
+    }
   },
   "bypass_actors": [],
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
     {
       "type": "pull_request",
       "parameters": {
@@ -25,13 +32,30 @@
       "parameters": {
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
-          { "context": "release gate" },
-          { "context": "🧰 setup" },
-          { "context": "📝 config" },
-          { "context": "🧹 lint" },
-          { "context": "🔎 typecheck" },
-          { "context": "🧪 test" },
-          { "context": "📦 build" }
+          {
+            "context": "release gate"
+          },
+          {
+            "context": "\ud83e\uddf0 setup"
+          },
+          {
+            "context": "\ud83d\udcdd config"
+          },
+          {
+            "context": "\ud83e\uddf9 lint"
+          },
+          {
+            "context": "\ud83d\udd0e typecheck"
+          },
+          {
+            "context": "\ud83e\uddea test"
+          },
+          {
+            "context": "\ud83d\udce6 build"
+          },
+          {
+            "context": "instructor gate"
+          }
         ]
       }
     }

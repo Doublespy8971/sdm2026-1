@@ -1,0 +1,49 @@
+# The team-instructor identity (the label, the title forms and the Team section) is reserved for the
+# instructors listed in .github/instructors.json (issue #139). The job is named "instructor gate" so the
+# rulesets can require it. It passes for every PR that does not use the identity.
+#   pull requests: the job fails, which blocks the merge once the ruleset requires it.
+#   issues:        an issue cannot be blocked, so the job fails and leaves a comment for the author.
+# Owner: platform team.
+name: Instructor gate
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
+  issues:
+    types: [opened, edited, labeled]
+
+# No concurrency group on purpose: a cancelled duplicate run would stay on the PR next to the real one (#94).
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  instructor-gate:
+    name: instructor gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The script and the list of instructors always come from main (the reviewed branch), never from
+      # the PR being judged, so a PR cannot add its author to the list and pass its own check.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      # The title, labels and body reach the script through the event file, never through a shell expression.
+      - name: Instructor gate
+        run: node server/tooling/workflow/check-instructor.mjs --event "$GITHUB_EVENT_PATH"
+
+      - name: Tell the author of the issue
+        if: ${{ failure() && github.event_name == 'issues' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$NUMBER" --repo "$REPO" --edit-last --create-if-none --body "The \`team-instructor\` label and the \`[team-instructor]\` title are reserved for the instructors (\`.github/instructors.json\`). Please use your own team's label and title prefix. To change files under \`course/\` from another team, use your team's label and add the \`cross-team\` label with an explanation. (Automated check: instructor gate.)"
