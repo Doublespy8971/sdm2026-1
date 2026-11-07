@@ -3,14 +3,24 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
-const { connectionRefusedMessage, formatShotResult, resolveScenario, screenshotPath, takeScenarioShot } =
-  await import("./shot.mjs");
+const {
+  browserInstallMessage,
+  connectionRefusedMessage,
+  formatShotResult,
+  resolveScenario,
+  screenshotPath,
+  takeScenarioShot,
+} = await import("./shot.mjs");
 
 describe("qa:shot", () => {
   it("explains how to start the game when the client refuses the connection", () => {
     expect(connectionRefusedMessage("http://localhost:5173")).toContain(
       'Nothing is running on the client URL http://localhost:5173. Start the game with "pnpm dev"',
     );
+  });
+
+  it("explains how to install Chromium when the browser is missing", () => {
+    expect(browserInstallMessage()).toContain("pnpm exec playwright install chromium");
   });
 
   it("resolves a scenario by id and validates its schema", async () => {

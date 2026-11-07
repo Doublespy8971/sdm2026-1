@@ -1,4 +1,5 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,6 +27,7 @@ describe("qa:evidence", () => {
     };
     const evidence = await collectEvidence({ cwd, git });
     expect(evidence).toEqual({
+      base: "upstream/main",
       assertedBy: [
         "tests/qa/committed.test.ts",
         "tests/qa/staged.spec.ts",
@@ -38,5 +40,46 @@ describe("qa:evidence", () => {
     });
     expect(formatEvidence(evidence)).toContain("Asserted by:\n- tests/qa/committed.test.ts");
     expect(formatEvidence(evidence)).toContain("3 passed, 1 failed");
+  });
+
+  it("uses origin/main in a real repository when upstream is unavailable", async () => {
+    const root = await mkdtemp(join(tmpdir(), "qa-evidence-real-"));
+    const seed = join(root, "seed");
+    const origin = join(root, "origin.git");
+    const cwd = join(root, "work");
+    const git = (args: string[], directory: string) =>
+      execFileSync("git", args, { cwd: directory, encoding: "utf8" }).trim();
+    try {
+      await mkdir(seed, { recursive: true });
+      git(["init", "-b", "main"], seed);
+      git(["config", "user.email", "qa@example.test"], seed);
+      git(["config", "user.name", "QA"], seed);
+      await writeFile(join(seed, "README.md"), "base\n");
+      git(["add", "."], seed);
+      git(["commit", "-m", "base"], seed);
+      git(["clone", "--bare", seed, origin], root);
+      git(["clone", origin, cwd], root);
+      git(["checkout", "-b", "feature"], cwd);
+      await writeFile(join(cwd, "changed.test.ts"), "test\n");
+      git(["add", "."], cwd);
+      git(["commit", "-m", "test"], cwd);
+
+      const evidence = await collectEvidence({ cwd });
+      expect(evidence.base).toBe("origin/main");
+      expect(evidence.assertedBy).toEqual(["changed.test.ts"]);
+      expect(formatEvidence(evidence)).toContain("Compared against origin/main");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("reports a clear error when no comparison base exists", async () => {
+    const git = (args: string[]) => {
+      if (args[0] === "rev-parse") throw new Error("raw git error");
+      throw new Error(`unexpected git call: ${args.join(" ")}`);
+    };
+    await expect(collectEvidence({ cwd: "/tmp", git })).rejects.toThrow(
+      "Could not find a comparison base (upstream/main, origin/main, or main). Run git fetch or add an upstream remote",
+    );
   });
 });

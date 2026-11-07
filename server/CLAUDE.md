@@ -93,6 +93,10 @@ Why these rules exist:
 | `pnpm qa:shot <scenario>` | Load a validated scenario headlessly and save a screenshot under `.qa/screenshots/` |
 | `pnpm qa:evidence [--json]` | Print changed test files, the latest QA results, scenarios and replay ids |
 
+Install the Playwright browser once before using `qa:shot`:
+`pnpm exec playwright install chromium`.
+`qa:evidence` compares against `upstream/main` or `origin/main`, so keep your fork's main synced.
+
 To record the latest Vitest counts for `qa:evidence`, run
 `pnpm test --reporter=json --outputFile=.qa/last-test.json`.
 

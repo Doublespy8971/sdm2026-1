@@ -45,6 +45,10 @@ export function connectionRefusedMessage(baseUrl) {
   return `Nothing is running on the client URL ${baseUrl}. Start the game with "pnpm dev", then run pnpm qa:shot again.`;
 }
 
+export function browserInstallMessage() {
+  return "Playwright Chromium is not installed. Run pnpm exec playwright install chromium, then run pnpm qa:shot again.";
+}
+
 export function formatShotResult(result, timestamp = new Date()) {
   return {
     paths: [result.path],
@@ -91,7 +95,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } catch (error) {
     const baseUrl = process.env.QA_BASE_URL ?? DEFAULT_BASE_URL;
     const message = error instanceof Error ? error.message : String(error);
-    console.error(message.includes("ERR_CONNECTION_REFUSED") ? connectionRefusedMessage(baseUrl) : message);
+    const output = message.includes("ERR_CONNECTION_REFUSED")
+      ? connectionRefusedMessage(baseUrl)
+      : /executable doesn't exist|browser.*not found|could not find.*browser/i.test(message)
+        ? browserInstallMessage()
+        : message;
+    console.error(output);
     process.exitCode = 1;
   }
 }

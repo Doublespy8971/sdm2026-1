@@ -8,8 +8,23 @@ function runGit(args, cwd) {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 }
 
+export function resolveBase({ cwd = process.cwd(), git = runGit } = {}) {
+  for (const ref of ["upstream/main", "origin/main", "main"]) {
+    try {
+      git(["rev-parse", "--verify", "--quiet", ref], cwd);
+      return ref;
+    } catch {
+      // Try the next base ref.
+    }
+  }
+  throw new Error(
+    "Could not find a comparison base (upstream/main, origin/main, or main). Run git fetch or add an upstream remote, then try again.",
+  );
+}
+
 export function changedTestFiles({ cwd = process.cwd(), git = runGit } = {}) {
-  const mergeBase = git(["merge-base", "HEAD", "upstream/main"], cwd);
+  const base = resolveBase({ cwd, git });
+  const mergeBase = git(["merge-base", "HEAD", base], cwd);
   const files = [
     git(["diff", "--name-only", mergeBase, "--"], cwd),
     git(["diff", "--name-only", "--cached", mergeBase, "--"], cwd),
@@ -18,7 +33,7 @@ export function changedTestFiles({ cwd = process.cwd(), git = runGit } = {}) {
   ]
     .flatMap((output) => output.split("\n"))
     .filter((file) => file && TEST_FILE_PATTERN.test(file));
-  return [...new Set(files)].sort();
+  return { base, files: [...new Set(files)].sort() };
 }
 
 async function findJsonFiles(root) {
@@ -47,7 +62,7 @@ function collectValues(value, key, found = new Set()) {
 }
 
 export async function collectEvidence({ cwd = process.cwd(), git = runGit } = {}) {
-  const changedTests = changedTestFiles({ cwd, git });
+  const { base, files: changedTests } = changedTestFiles({ cwd, git });
   const artifactPaths = [resolve(cwd, ".qa", "qa-runs.json")].filter(existsSync);
   const replayPaths = (await findJsonFiles(resolve(cwd, "replays"))).sort();
   const artifacts = [];
@@ -71,6 +86,7 @@ export async function collectEvidence({ cwd = process.cwd(), git = runGit } = {}
     ? { passed: testResults.numPassedTests ?? 0, failed: testResults.numFailedTests ?? 0 }
     : null;
   return {
+    base,
     assertedBy: changedTests,
     lastTestResults: testSummary,
     scenarios: [...scenarios].sort(),
@@ -80,6 +96,7 @@ export async function collectEvidence({ cwd = process.cwd(), git = runGit } = {}
 
 export function formatEvidence(evidence) {
   return [
+    `Compared against ${evidence.base}`,
     "Asserted by:",
     ...(evidence.assertedBy.length ? evidence.assertedBy.map((file) => `- ${file}`) : ["- None"]),
     "",
