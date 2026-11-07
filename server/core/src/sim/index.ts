@@ -16,7 +16,8 @@ export const Seat = schema(
     lastSeq: t.uint32().default(0),
     /**
      * The player's guest fingerprint: 12 hex characters, the same for every tab and reload of one
-     * browser, or "" when the client sent no valid guest ID. Public; never the raw guest ID.
+     * browser in this game (another game gets a different one), or "" when the client sent no valid
+     * guest ID. Public; never the raw guest ID. A hint, not authentication (see `JoinInfo.guest`).
      */
     guest: t.string().default(""),
   },
@@ -71,8 +72,10 @@ export interface TickInput<I> {
 export interface JoinInfo {
   /**
    * Guest fingerprint (see `Seat.guest`): the same value for the same browser across tabs, reloads and
-   * expired seats, or "" when the client sent none. Use it to recognise a returning player. One guest
-   * can hold several seats at once (two tabs).
+   * expired seats in this game, or "" when the client sent none. Use it as a hint to recognise a
+   * returning player, not as authentication: other games on the same origin can read the stored ID
+   * and a client can send a fresh one to avoid being recognised, so never use it to hand over a seat,
+   * score or ownership. One guest can hold several seats at once (two tabs).
    */
   readonly guest: string;
 }

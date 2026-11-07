@@ -4,8 +4,14 @@
  *
  *   client.joinById(roomId, { name, guestId: getGuestId() })
  *
- * The server never stores or shows it; games see only its fingerprint, `seats[sessionId].guest`.
- * Treat it like a password: don't log it, put it in a URL or a bug report, or show it to players.
+ * One key for the whole browser, deliberately not scoped to the game's path: every game on the shared
+ * origin reads the same ID, and the server makes the public fingerprint (`seats[sessionId].guest`)
+ * different in each game, so players can't be linked across games.
+ *
+ * It is a hint to recognise a returning player in this game, not a login: other games on the origin
+ * can read it and a client can send a fresh one, so never use it to hand over a seat, score or
+ * ownership. The server never stores or shows the raw ID; don't log it, put it in a URL or a bug
+ * report, or show it to players either.
  */
 import { isGuestId } from "../shared/guest.ts";
 

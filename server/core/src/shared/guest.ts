@@ -2,9 +2,13 @@
  * Guest identity: a random ID the browser keeps (`getGuestId()` in @sdm/core/client) and sends as the
  * join option `guestId`, so a game can tell that the same person came back.
  *
- * The raw ID works like a password: anyone who has it can join as that person. So it never appears in
- * synced state, logs, replays or HTTP responses. The server turns it into a short public fingerprint
- * (`guest`: the first 12 hex characters of its SHA-256) and stores only that.
+ * The guest is a hint to recognise a returning player in this game, not authentication: never use it
+ * to hand over a seat, a score or ownership. Every game on the shared origin can read the stored ID,
+ * and a client can send any UUID (a fresh one to avoid being recognised, or someone else's).
+ *
+ * The server never puts the raw ID in synced state, logs, replays or HTTP responses. It turns it into a
+ * short public fingerprint per game (`guest`: the first 12 hex characters of SHA-256 of
+ * `<game id>:<ID>`) and stores only that, so `guest` values can't link one player across games.
  */
 
 /** The join option the client sends the raw guest ID in. */

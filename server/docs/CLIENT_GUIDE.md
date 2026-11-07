@@ -46,7 +46,7 @@ In production every game is served under its own path, `<address>/team-N/`, behi
 1. **Server address from the page.** Use `serverUrlFromPage(location.href)` from `@sdm/core/client`, never `location.origin` (it drops `/team-N`). On a page one folder below the server root (for example `multiplayer/index.html`), pass `1`: `serverUrlFromPage(location.href, 1)`.
 2. **Relative assets.** Keep `base: "./"` in `vite.config.ts` (the template has it). With Vite's default `/`, the page asks for `/assets/...` and gets the gateway's 404 instead of your files.
 3. **No absolute links.** Write `href="multiplayer/"` or `href="./multiplayer/"`, not `href="/multiplayer/"`, and ``fetch(`${SERVER_URL}/path`)``, not `fetch("/path")`. A link that starts with `/` leaves your game. The same goes for `new URL("/path", SERVER_URL)`: a leading `/` replaces the path of the base, so `https://host/team-2` becomes `https://host/path`. Build the address by joining strings, or use `serverLink(SERVER_URL, "/path")` from `@sdm/core/client`. End links to a folder with a slash (`multiplayer/`, not `multiplayer`): without it `express.static` redirects to `/multiplayer/` without the prefix, which leaves the game.
-4. **Keep browser storage per game.** All games share one address, so `sessionStorage` and `localStorage` are shared too. Put the game's path in every key, as the template does (`sdm:${new URL(SERVER_URL).pathname}:reconnectionToken`), or a token or room code saved by `/team-2/` is tried on `/team-4/`.
+4. **Keep browser storage per game.** All games share one address, so `sessionStorage` and `localStorage` are shared too. Put the game's path in every key, as the template does (`sdm:${new URL(SERVER_URL).pathname}:reconnectionToken`), or a token or room code saved by `/team-2/` is tried on `/team-4/`. The one exception is `sdm:guestId` (see [Guest ID](#guest-id-recognise-a-returning-player)): it is deliberately shared by every game, and the server makes the public fingerprint different in each game.
 5. **One page at `/`.** The game's page is served for every path that is not the API, so a deep link such as `/lobby/QXTR` loads `index.html`, whose relative assets then resolve under `/lobby/` and fail. Pass state in the query string (`/team-2/?room=QXTR`, as invite links do), not in the path. A second HTML page needs its own folder (`multiplayer/index.html`) and a trailing-slash link.
 
 Check both ways: your game at the root of its own server, and behind the gateway at `/team-N/` (the local command is in the Gateway section of [ARCHITECTURE.md](../ARCHITECTURE.md)).
@@ -157,7 +157,7 @@ await client.joinById(roomId, { name, guestId });
 
 - If `localStorage` is missing or throws (private windows), `getGuestId()` returns one ID kept in memory for the page: the player joins normally but isn't recognised after a reload. Tests can pass their own storage: `getGuestId(fakeStorage)`.
 - A missing or invalid `guestId` (anything but a UUID) never rejects a join; that player's `guest` is `""`.
-- **What everyone sees:** `seats[sessionId].guest`, a public fingerprint (12 hex characters of the ID's SHA-256), the same for every seat of one browser. Two seats with the same non-empty `guest` belong to one person.
+- **What everyone sees:** `seats[sessionId].guest`, a public fingerprint (12 hex characters of the SHA-256 of `<game id>:<ID>`), the same for every seat of one browser in your game. Two seats with the same non-empty `guest` belong to one person. Another game gets a different fingerprint for the same browser, so players can't be linked across games.
 - **What your game gets:** the same fingerprint as the fourth argument of `join`, `info.guest`, and on `ctx.state.seats.get(playerId).guest`:
 
   ```ts
@@ -170,7 +170,8 @@ await client.joinById(roomId, { name, guestId });
   ```
 
   Keep what you want to restore in your synced state, not in a variable, so replays reproduce it. One guest can hold several seats at once (two tabs); stopping that is up to your game.
-- **Treat the raw ID like a password.** The server never puts it in state, logs, replays or HTTP responses, because those can be downloaded, and a copied ID would let someone join as that player. Don't put it in a URL, a log line, a bug report or on screen yourself; show `guest` instead.
+- **It's a hint, not a login.** Use `guest` to recognise a returning player in your game, never to hand over a seat, a score or ownership: every game on the shared address can read `sdm:guestId`, and a client can send a fresh UUID to avoid being recognised (or any other UUID).
+- **Keep the raw ID out of sight anyway.** The server never puts it in state, logs, replays or HTTP responses, because those can be downloaded. Don't put it in a URL, a log line, a bug report or on screen yourself; show `guest` instead.
 
 ### Server messages
 
