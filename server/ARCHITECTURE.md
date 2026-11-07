@@ -73,6 +73,7 @@ One address, one path per game. The gateway is the only public service of an env
 | anything else | A 404 page; a game that cannot be reached gives a 502 page |
 
 - The first path segment picks the game and is **removed**, so a game never sees its prefix. The Colyseus client supports this: with the endpoint `https://<address>/team-2` both the matchmaking requests and the WebSocket go through the prefix (`gateway.integration.test.ts` plays a real game that way).
+- A game that accepts an HTTP request and then stays silent for 30 s gets the 502 page from the gateway (`UPSTREAM_TIMEOUT_MS`), instead of the platform edge's generic error. WebSockets have no timeout: a live game is silent for long stretches. When a game is down, a WebSocket upgrade is answered with `502 Bad Gateway` (and an unknown game with 404), so a client can tell that from a dropped network.
 - The gateway appends the address it saw to `X-Forwarded-For`. A game behind it runs with `TRUST_PROXY_HOPS=2` (Railway's edge, then the gateway). With the default of 1 every player would look like the edge and share the per-IP rate limits (bug reports, live replays).
 - Settings (`.env.example`): `GAMES`, `PLANNED_GAMES`, `UPSTREAM_PORT`, plus `PORT` and `APP_ENV` as for a game. On Railway `.railway/railway.ts` sets them from its own list of games.
 - Run it locally next to a game: `UPSTREAMS="team-2=http://127.0.0.1:2567" PORT=2570 node --import tsx server/gateway/server.ts`, then open <http://localhost:2570/team-2/>.

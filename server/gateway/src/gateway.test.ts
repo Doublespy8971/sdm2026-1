@@ -147,7 +147,11 @@ async function fakeGame(name: string, status = 200) {
   return { port, seen, wsSeen, url: `http://127.0.0.1:${port}` };
 }
 
-async function gatewayFor(upstreams: Record<string, string>, planned: string[] = []) {
+async function gatewayFor(
+  upstreams: Record<string, string>,
+  planned: string[] = [],
+  options: { upstreamTimeoutMs?: number } = {},
+) {
   const logs: Record<string, unknown>[] = [];
   const config: GatewayConfig = {
     games: Object.keys(upstreams),
@@ -157,7 +161,7 @@ async function gatewayFor(upstreams: Record<string, string>, planned: string[] =
     sha: "abc123",
     startedAt: "2026-01-01T00:00:00.000Z",
   };
-  const server = createGateway(config, { log: (f) => logs.push(f) });
+  const server = createGateway(config, { log: (f) => logs.push(f), ...options });
   const port = await listen(server);
   return { base: `http://127.0.0.1:${port}`, port, logs };
 }
@@ -249,6 +253,38 @@ describe("the gateway", () => {
     expect(logs[0]).toMatchObject({ level: "error", msg: "upstream error", game: "team-2" });
   });
 
+  it("answers 502 itself when a game accepts the request but never answers", async () => {
+    const hung = createServer(() => {}); // takes the request and says nothing, like a stuck event loop
+    const hungPort = await listen(hung);
+    const { base, logs } = await gatewayFor({ "team-2": `http://127.0.0.1:${hungPort}` }, [], {
+      upstreamTimeoutMs: 150,
+    });
+    const started = Date.now();
+    const res = await fetch(`${base}/team-2/`);
+    expect(res.status).toBe(502);
+    expect(await res.text()).toContain("team-2 is not reachable");
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(logs[0]).toMatchObject({ level: "error", msg: "upstream error", game: "team-2" });
+  });
+
+  it("does not time out a slow answer that keeps sending", async () => {
+    const slow = createServer((_req, res) => {
+      res.writeHead(200);
+      const tick = setInterval(() => res.write("."), 50);
+      setTimeout(() => {
+        clearInterval(tick);
+        res.end("done");
+      }, 400);
+    });
+    const slowPort = await listen(slow);
+    const { base } = await gatewayFor({ "team-2": `http://127.0.0.1:${slowPort}` }, [], {
+      upstreamTimeoutMs: 150,
+    });
+    const res = await fetch(`${base}/team-2/`);
+    expect(res.status).toBe(200);
+    expect((await res.text()).endsWith("done")).toBe(true);
+  });
+
   it("keeps working for the other games when one is down", async () => {
     const dead = await fakeGame("team-2");
     const deadUrl = dead.url;
@@ -307,5 +343,22 @@ describe("the gateway and WebSockets", () => {
     const { port, base } = await gatewayFor({ "team-2": url });
     await expect(open(`ws://127.0.0.1:${port}/team-2/p/r`)).rejects.toBeTruthy();
     expect((await fetch(`${base}/health`)).status).toBe(200);
+  });
+
+  it("tells the client 502 when the game is down, so it is not mistaken for a network drop", async () => {
+    const dead = await fakeGame("team-2");
+    const url = dead.url;
+    await closers.pop()?.();
+    const { port } = await gatewayFor({ "team-2": url });
+    await expect(open(`ws://127.0.0.1:${port}/team-2/p/r`)).rejects.toThrow("HTTP 502");
+  });
+
+  it("keeps a WebSocket open however long it is silent: the timeout is for plain requests", async () => {
+    const a = await fakeGame("team-2");
+    const { port } = await gatewayFor({ "team-2": a.url }, [], { upstreamTimeoutMs: 100 });
+    const ws = await open(`ws://127.0.0.1:${port}/team-2/p/r`);
+    await new Promise((r) => setTimeout(r, 400));
+    ws.send("still here");
+    expect(await next(ws)).toBe("team-2:still here");
   });
 });
