@@ -68,7 +68,7 @@ Why these rules exist:
 
 | Command | What it does |
 |---|---|
-| `pnpm install` | Install everything (checks your Node version first) |
+| `pnpm install` | Install everything (checks your Node version first) and switch on the git hooks (see "Git hooks" below) |
 | `pnpm check:setup` | Check this machine's setup and explain how to fix problems (`--json` for scripts) |
 | `pnpm dev` | Run the template game: server on :2567, client on :5173 |
 | `pnpm --filter @team-N/game dev` | Run your team's game |
@@ -77,6 +77,7 @@ Why these rules exist:
 | `pnpm test` | Vitest across every package |
 | `pnpm build` | Build every game's client |
 | `pnpm workflow:classify --kind issue\|pr\|commit` | Decide the type, team label, template and base branch for a change (`--json` for scripts; see "Templates, classification and checks" in `CLAUDE.md`) |
+| `pnpm check:instructor --kind pr\|issue --number <n>` | Check that the `team-instructor` identity is only used by the accounts in `.github/instructors.json` |
 | `pnpm check:issue` / `pnpm check:pr` / `pnpm check:commit` | Check an issue, a pull request or commit messages against their template or format |
 | `pnpm preflight` | Everything a branch must pass before it becomes a PR (see "Preflight" below) |
 | `pnpm preflight:quick` | Lint, typecheck and ownership in a few seconds. Agents run it after every change |
@@ -168,6 +169,20 @@ The environment URLs aren't in the repository. Set `SDM_DEV_URL` and `SDM_PROD_U
 
 A release, step by step: `pnpm release --issue <n>` opens the PR once CI is green on `main`; `pnpm env:status` (or `pnpm env:wait dev <sha>`) shows development runs that commit; someone else approves; a person merges; then `pnpm env:wait prod <merge commit>` shows production runs it.
 
+## Git hooks
+
+`pnpm install` points git at the repository's hooks in `.githooks/` (`git config core.hooksPath .githooks`, via `server/tooling/install-hooks.mjs`), so every commit and push is checked, by people and by every coding agent alike: they all go through git. Nothing else to install.
+
+| Hook | What it does |
+|---|---|
+| `commit-msg` | On a work branch (`<team-label>/<issue>-<description>`), adds `Refs #<issue>` to the message when it has no issue reference yet, in its own paragraph before any trailers. Then checks the message with the `check:commit` rules and refuses it with the reason and an example. Merge, revert and fixup messages pass untouched. It fills in the bare `Refs #` line from `.gitmessage`, works during a rebase reword, and never touches the diff `git commit -v` adds below the scissors line. |
+| `pre-push` | Runs `pnpm preflight:quick` (lint, typecheck, ownership) and, on a work branch, `pnpm check:branch --offline`. These look at the working tree, so they only run when you push the commit you have checked out (not for tags, deletions or another branch), and a failure doesn't block the push while you have uncommitted changes, or when the checks can't run on this machine (exit code 3, e.g. a base branch that isn't fetched). It says so each time; CI checks the pushed commits. |
+
+- Skip a hook once with `git commit --no-verify` or `git push --no-verify`. CI and the workflow checks still catch anything that was skipped.
+- The hooks are Node scripts (no bash), so they run on macOS, Windows (Git Bash) and Linux.
+- If you already use your own `core.hooksPath`, `pnpm install` leaves it alone and says how to switch to the repo's hooks. It does nothing in CI or outside a git checkout (a Railway build).
+- The rules live in `server/tooling/workflow/lib/hooks.mjs`, with tests next to the other workflow checks.
+
 ## CI
 
 Every pull request and every push to `main` runs the **CI** checks (`.github/workflows/ci.yml`) on Linux, one job per check so a PR shows exactly which one failed: 🧰 setup (`pnpm check:setup --ci`), 📝 config (`pnpm check:config`), 🧹 lint, 🔎 typecheck, 🧪 test and 📦 build, the same commands as above. Each job installs with `pnpm install --frozen-lockfile` through the shared `.github/actions/setup`. Only Linux runs, because every game deploys to Railway, which is Linux. A red check means the PR is not ready for review.
@@ -177,3 +192,5 @@ Every pull request and every push to `main` runs the **CI** checks (`.github/wor
 - Actions are pinned to commit SHAs. Update them through a platform PR.
 
 A second workflow, **Workflow checks** (`.github/workflows/workflow-checks.yml`), runs `pnpm check:pr` and `pnpm check:commit` on every pull request: title, team label, branch and base names, template headings, linked issue, ticked checklist and the commit message format. It also runs the branch-level preflight checks (`check:branch`, `check:ownership`, `check:files`, `check:secrets`, `check:docs`, `check:determinism`, `check:contract`); `ci.yml` runs `check:config` after install. It reruns when the title or description is edited, so fix the text and the check turns green.
+
+A third workflow, **Instructor gate** (`.github/workflows/instructor-gate.yml`), runs `pnpm check:instructor` on every pull request and on issues: the `team-instructor` label, title forms and *Team* section may only be used by the accounts in `.github/instructors.json`. On a PR the job `instructor gate` fails (it is the name the rulesets require); on an issue the job `instructor gate (issues)`, the only one allowed to write issues, leaves one comment and updates it to "resolved" once the issue is fixed. The workflow uses `pull_request_target`, so GitHub runs the copy of the file on the base branch and a PR cannot edit the gate that judges it, and the script and the list always come from `main`. That is only safe because no job checks out or runs the PR's code: do not add such a step. A PR into a branch that does not have the file yet (a `feature/team-N` that has not merged `main`) is not checked until it does. The instructors review changes to the workflow and the scripts (`.github/CODEOWNERS`).
