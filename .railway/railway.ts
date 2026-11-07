@@ -54,11 +54,11 @@ export const GAMES: readonly Game[] = [
 /** Teams that get a path on the gateway even before their game is in `GAMES` (the index lists them as "not released yet"). */
 const TEAMS = ["team-1", "team-2", "team-3", "team-4"];
 
-/** Railway service name of the gateway. A game cannot use it. */
+/** Railway service name of the gateway. */
 export const GATEWAY = "gateway";
 
-/** Hops in front of a game: Railway's edge, then the gateway. The host reads the client address from the second. */
-const TRUST_PROXY_HOPS = "2";
+/** Names a game cannot have: the gateway's own service, and the one path it answers itself (`/health`). */
+const RESERVED = [GATEWAY, "health"];
 
 /** Platform files every game runs on: a change here redeploys every game. */
 const PLATFORM_WATCH = [
@@ -76,9 +76,12 @@ const PLATFORM_WATCH = [
 const NEVER_WATCH = ["!**/*.md", "!**/*.test.ts"];
 
 /** Fail the plan early, with a clear message, instead of deploying a service that can't start. */
-function checkGame(game: Game): Game {
-  if (game.service === GATEWAY)
-    throw new Error(`Game "${game.service}": "${GATEWAY}" is the gateway's service name.`);
+export function checkGame(game: Game): Game {
+  if (RESERVED.includes(game.service)) {
+    throw new Error(
+      `Game "${game.service}": the name is reserved (${RESERVED.join(", ")}): the gateway uses it for itself.`,
+    );
+  }
   const dir = new URL(`../${game.dir}/`, import.meta.url);
   const pkgFile = new URL("package.json", dir);
   if (!existsSync(pkgFile) || !existsSync(new URL("server.ts", dir))) {
@@ -126,8 +129,6 @@ function gameService(game: Game, env: (typeof ENVIRONMENTS)[EnvironmentName]) {
       APP_ENV: env.appEnv,
       PORT,
       LOG_LEVEL: "info",
-      // Games are not public: they answer the gateway, so they see two proxies in front of them.
-      TRUST_PROXY_HOPS,
     },
   });
 }
@@ -162,6 +163,9 @@ function gatewayService(env: (typeof ENVIRONMENTS)[EnvironmentName]) {
     env: {
       APP_ENV: env.appEnv,
       PORT,
+      // The games' port is the one they listen on (PORT above): one value, so changing it cannot leave the
+      // gateway calling a port nobody listens on.
+      UPSTREAM_PORT: PORT,
       GAMES: games.join(","),
       PLANNED_GAMES: TEAMS.filter((team) => !games.includes(team)).join(","),
     },

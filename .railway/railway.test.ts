@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createRailwayContext, type ProjectDefinition, type ServiceNode } from "railway/iac";
 import { describe, expect, it } from "vitest";
-import program, { ENVIRONMENTS, type EnvironmentName, GAMES, GATEWAY } from "./railway.ts";
+import program, { checkGame, ENVIRONMENTS, type EnvironmentName, GAMES, GATEWAY } from "./railway.ts";
 
 async function plan(environment: string): Promise<ServiceNode[]> {
   const definition: ProjectDefinition = await program(createRailwayContext({ environment }), (name, def) => ({
@@ -30,11 +30,18 @@ describe.each(Object.keys(ENVIRONMENTS) as EnvironmentName[])("railway.ts in %s"
     );
   });
 
-  it("makes games trust the gateway and Railway's edge, and nobody else", async () => {
+  it("reaches every game on the port the games listen on", async () => {
+    const services = await plan(environment);
+    const port = services.find((s) => s.name !== GATEWAY)?.variables?.PORT;
+    expect(services.find((s) => s.name === GATEWAY)?.variables?.UPSTREAM_PORT).toEqual(port);
+  });
+
+  it("declares no custom domain on any service", async () => {
+    // Railway's generated domains are not part of this file, so the file cannot make a game private by
+    // itself: only the gateway is given a domain, by hand (see RAILWAY_SETUP.md). Games stay correct even
+    // if one is public, because the gateway passes X-Forwarded-For through untouched.
     for (const s of await plan(environment)) {
-      const hops = s.variables?.TRUST_PROXY_HOPS;
-      if (s.name === GATEWAY) expect(hops).toBeUndefined();
-      else expect(hops).toEqual({ type: "literal", value: "2" });
+      expect(s.networking?.customDomains ?? {}).toEqual({});
     }
   });
 
@@ -65,6 +72,13 @@ describe("railway.ts", () => {
     const gateway = (await plan("production")).find((s) => s.name === GATEWAY);
     expect(gateway?.deploy?.startCommand).toBe("node --import tsx server/gateway/server.ts");
     expect(gateway?.build?.watchPatterns).toContain("/server/gateway/**");
+  });
+
+  it.each(["gateway", "health"])("refuses a game named %s: the gateway uses the name itself", (service) => {
+    expect(() => checkGame({ service, dir: "server/template", package: "@sdm/template" })).toThrow(
+      /reserved/,
+    );
+    expect(checkGame({ service: "team-2-x", dir: "server/template", package: "@sdm/template" })).toBeTruthy();
   });
 
   it("refuses an environment it doesn't manage", async () => {
