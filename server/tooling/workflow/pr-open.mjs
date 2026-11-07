@@ -19,7 +19,7 @@
 //   --dry-run                 do everything except push and create the PR; print the draft
 //   --json                    machine-readable output
 //
-// The draft is saved to .git/sdm/pr-body.md, so after a refusal you can finish it and pass --body-file.
+// The draft is saved in the git directory (.git/sdm/pr-body.md), so after a refusal you can finish it and pass --body-file.
 // Exit codes: 0 opened (or drafted), 1 refused, 2 usage error (including no team and no terminal),
 // 3 environment problem (git, gh).
 import { execFileSync, spawnSync } from "node:child_process";
