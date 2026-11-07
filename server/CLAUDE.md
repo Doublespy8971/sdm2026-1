@@ -80,6 +80,10 @@ Why these rules exist:
 | `pnpm check:issue` / `pnpm check:pr` / `pnpm check:commit` | Check an issue, a pull request or commit messages against their template or format |
 | `pnpm preflight` | Everything a branch must pass before it becomes a PR (see "Preflight" below) |
 | `pnpm preflight:quick` | Lint, typecheck and ownership in a few seconds. Agents run it after every change |
+| `pnpm team:set <team>` | Save which team you are on, for `issue:start` and `pr:open` (see "Workflow commands" below) |
+| `pnpm issue:start <n>` | Start work on issue `n`: check it is your team's, update your base branch, create the work branch, assign you |
+| `pnpm pr:open` | Run `pnpm preflight`, then open the PR for the current work branch into your team's branch |
+| `pnpm check:review` | Check a PR has an approving review from someone other than its author |
 | `pnpm labels:sync` | Make the repo's GitHub labels match `server/tooling/workflow/labels.json` (dry run; `--apply` to change) |
 | `pnpm labels:prs` | Update every PR's `stackpile` and `waiting-on.*` labels (`--dry-run`, `--number <n>`). The "PR labels" workflow runs it every 10 minutes |
 
@@ -102,6 +106,45 @@ Run `pnpm preflight` before opening a PR. It must pass.
 | `check:contract` | never fails; warns when `server/core/src/shared/` changes, because every game depends on it |
 
 The checks live in `server/tooling/workflow/` with the rest of the workflow toolkit: pure rules in `lib/`, a thin command per check, no runtime dependencies (`check:config` needs `pnpm install`, because it loads each game's schema).
+
+## Workflow commands
+
+These commands do the workflow in `CLAUDE.md` for you, so following it is the easiest path. They live in `server/tooling/workflow/` with the checks (pure rules in `lib/`, a thin command per script, no runtime dependencies), take `--json`, and use the same exit codes: 0 (OK), 1 (refused or problems found), 2 (usage error), 3 (environment problem, e.g. `gh` not logged in). Every command that changes something on GitHub takes `--dry-run`, which checks everything and prints what it would do.
+
+### Your team
+
+`issue:start` and `pr:open` need to know which team you are on. The first time you run one of them it asks (`team-1` to `team-4`, `platform` or `team-instructor`) and saves the answer in local git config, `sdm.team`, which is per clone and never committed. Without a terminal (agents, CI) it never guesses: it stops with exit code 2 and asks for `--team`.
+
+| Command | What it does |
+|---|---|
+| `pnpm team:set <team>` | Save or change your team. Without a team it asks (in a terminal only). `--show` prints the saved team (exit 1 when none is saved) |
+| `--team <team>` on `issue:start` / `pr:open` | Use this team for one run. The saved team is not changed |
+
+### `pnpm issue:start <n>`
+
+Checks issue `n` is open and has exactly one team label, and that the label is your team. Then it fetches your team's base branch (`feature/team-N`; `main` for platform and instructors), fast-forwards your local copy of it when it can, creates `<label>/<n>-<slug>` from `origin/<base>`, and assigns you.
+
+- It refuses another team's issue (`--team <label>` overrides for one run), a closed issue, a branch that already exists locally or on GitHub, and uncommitted changes.
+- The slug comes from the issue title (lowercase words joined by `-`, at most 40 characters); `--slug <text>` sets it.
+- `--dry-run` checks the issue and prints the plan without changing anything locally or on GitHub.
+
+### `pnpm pr:open`
+
+Opens the PR for the current work branch, in this order, and stops at the first refusal:
+
+1. The branch is a work branch of your team, its issue is open and has your team's label, and it has no open PR yet. Another team's branch or issue label is refused; `--team <label>` overrides for one run.
+2. `pnpm preflight` passes against your team's branch. If it fails, no PR is opened.
+3. The change is classified like `pnpm workflow:classify --kind pr`: the type and the template. The PR gets your team label, the only label you set (see "Labels" in `CLAUDE.md`). If the classifier can't decide, pass `--type` after asking.
+4. It drafts the title and the body. The title is Conventional Commits with your team as the scope, from the issue title, or from the oldest commit of that type when the issue title doesn't fit. The body follows the template: `Closes #N`, the team, a summary from the issue and the commits, `pnpm preflight` under "How to test", `None` under "Screenshots" when no client files changed, and the changed Markdown files under "Pages affected". Sections it can't know (Root cause, Impact, Behaviour unchanged, screenshots of a visible change) come from options named after the heading: `--root-cause`, `--impact`, `--behaviour-unchanged`, `--screenshots`, `--summary`, `--how-to-test`, `--pages-affected`. `--title` sets the title.
+5. It ticks a checklist item only when it verified it: the issue, label, title, branch name and base from step 1, the folder, commit and file checks from preflight, and "up to date" from `git merge-base`. A cross-team change (an ownership warning) stays unticked, because only a person can say the issue explains why. "I tested the change" is ticked when "How to test" is the preflight that just passed; with your own `--how-to-test`, pass `--tested` once you have run those steps.
+6. The `check:pr` rules run on the draft. Any problem, an empty section or an unticked item, means no PR is opened. The draft is saved in the git directory (`.git/sdm/pr-body.md` in a normal clone; the command prints the path): finish it and run again with `--body-file`, or fix the cause.
+7. It pushes the branch (`git push -u`, never forced) and runs `gh pr create`.
+
+`--dry-run` runs steps 1 to 6 and prints the title, labels, body and the commands it would run.
+
+### `pnpm check:review`
+
+Passes when the PR has an approving review from someone other than its author. Each reviewer's latest decision counts: a later "changes requested" or a dismissal cancels an approval, and comments don't count. Open change requests from other reviewers are a warning. It reads the current branch's PR, or `--number <n>`.
 
 ## CI
 
