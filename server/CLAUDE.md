@@ -83,6 +83,8 @@ Why these rules exist:
 | `pnpm sync` | Merge your branch's base into it and report conflicts (see "Branch, release and environment commands" below) |
 | `pnpm team:promote <N>` / `pnpm branches:sync` / `pnpm release` | Open the PR `feature/team-N` → `main`, `main` → each `feature/team-N` that is behind, or `main` → `prod` |
 | `pnpm env:status` / `pnpm env:wait <env> <sha>` | Compare the commit each Railway environment runs with `main` / `prod`, or wait until one runs a commit |
+| `pnpm labels:sync` | Make the repo's GitHub labels match `server/tooling/workflow/labels.json` (dry run; `--apply` to change) |
+| `pnpm labels:prs` | Update every PR's `stackpile` and `waiting-on.*` labels (`--dry-run`, `--number <n>`). The "PR labels" workflow runs it every 10 minutes |
 
 Run `pnpm preflight` before opening a PR. It must pass.
 
@@ -93,7 +95,7 @@ Run `pnpm preflight` before opening a PR. It must pass.
 | Check | Fails when |
 |---|---|
 | `check:branch` | the branch isn't `<team-label>/<issue>-<description>`; it targets the wrong base (team work → `feature/team-N`; platform and instructor work → `main`; `feature/team-N` → `main`; `main` → `prod` or `feature/team-N`); or its issue is missing, closed or has a different label |
-| `check:ownership` | a work branch changes files another label owns (`server/tooling/ownership.json`). With the `cross-team` label on the issue they are warnings instead |
+| `check:ownership` | a work branch changes files another label owns (`server/tooling/ownership.json`). With a line `Cross-team: <why>` in the issue they are warnings instead |
 | `check:commit` | a commit on the branch doesn't follow the commit format (see `CLAUDE.md`) |
 | `check:files` | dependencies, build output, `.env` files or files over 1 MB are committed |
 | `check:secrets` | an added line looks like a token, private key or hard-coded password |

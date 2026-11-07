@@ -22,6 +22,8 @@
     "check:issue": "node server/tooling/workflow/check-issue.mjs",
     "check:pr": "node server/tooling/workflow/check-pr.mjs",
     "check:commit": "node server/tooling/workflow/check-commit.mjs",
+    "labels:sync": "node server/tooling/workflow/labels-sync.mjs",
+    "labels:prs": "node server/tooling/workflow/pr-labels.mjs",
     "check:branch": "node server/tooling/workflow/check-branch.mjs",
     "check:ownership": "node server/tooling/workflow/check-ownership.mjs",
     "check:files": "node server/tooling/workflow/check-files.mjs",
