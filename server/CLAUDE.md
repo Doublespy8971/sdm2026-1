@@ -84,6 +84,9 @@ Why these rules exist:
 | `pnpm issue:start <n>` | Start work on issue `n`: check it is your team's, update your base branch, create the work branch, assign you |
 | `pnpm pr:open` | Run `pnpm preflight`, then open the PR for the current work branch into your team's branch |
 | `pnpm check:review` | Check a PR has an approving review from someone other than its author |
+| `pnpm sync` | Merge your branch's base into it and report conflicts (see "Branch, release and environment commands" below) |
+| `pnpm team:promote <N>` / `pnpm branches:sync` / `pnpm release` | Open the PR `feature/team-N` → `main`, `main` → each `feature/team-N` that is behind, or `main` → `prod` |
+| `pnpm env:status` / `pnpm env:wait <env> <sha>` | Compare the commit each Railway environment runs with `main` / `prod`, or wait until one runs a commit |
 | `pnpm labels:sync` | Make the repo's GitHub labels match `server/tooling/workflow/labels.json` (dry run; `--apply` to change) |
 | `pnpm labels:prs` | Update every PR's `stackpile` and `waiting-on.*` labels (`--dry-run`, `--number <n>`). The "PR labels" workflow runs it every 10 minutes |
 
@@ -145,6 +148,25 @@ Opens the PR for the current work branch, in this order, and stops at the first 
 ### `pnpm check:review`
 
 Passes when the PR has an approving review from someone other than its author. Each reviewer's latest decision counts: a later "changes requested" or a dismissal cancels an approval, and comments don't count. Open change requests from other reviewers are a warning. It reads the current branch's PR, or `--number <n>`.
+
+## Branch, release and environment commands
+
+These do the steps of [Branches](../CLAUDE.md#branches) and [Deploying to Railway](../CLAUDE.md#deploying-to-railway) for you. Like the checks, every one takes `--json` and exits with 0 (OK), 1 (problems found, or it refused), 2 (usage error) or 3 (environment problem: `git` or `gh` failed, or a URL is not set). Progress goes to stderr, so `--json` output on stdout stays parseable. The commands that open PRs fill the template, check the result with `check:pr`'s rules, and tick only the checklist items they verified themselves; tick the rest once you have checked them. **None of them merges anything**, and none rebases or force-pushes.
+
+| Command | What it does | Refuses when |
+|---|---|---|
+| `pnpm sync` | Fetches the base of the current branch (team work: `feature/team-N`; platform and instructor work: `main`; `--base <branch>` to override) and merges `origin/<base>` into it. On a conflict it lists every conflicted file and leaves the merge for you to finish (`git add`, `git commit`) or undo (`git merge --abort`). It never resolves a conflict and never pushes. `--dry-run` predicts the conflicts without merging | you're on `main`, `prod` or a `feature/team-N` (use `pnpm branches:sync`), there are uncommitted changes, or a merge is already in progress |
+| `pnpm team:promote <N> --issue <n>` | Opens `feature/team-N` → `main` from the chore template, titled `chore(team-N): merge feature/team-N into main`, labelled `team-N`, with `Closes #n` and the PRs merged into the feature branch. Warns when the feature branch is behind `main` or would conflict. `<N>` defaults to `--team`, then `git config sdm.team` | the feature branch has nothing `main` lacks, a PR `feature/team-N` → `main` is already open, or issue `#n` is missing, closed or not labelled `team-N` |
+| `pnpm branches:sync [<N>...] --issue <n>` | Opens `main` → `feature/team-N` from the sync template for every feature branch that is behind `main` (or only teams `<N>...`), labelled `platform`, with `Refs #n`, the PRs it brings and whether it conflicts. Branches that are up to date or already have an open sync PR are skipped | issue `#n` is missing or not labelled `platform` |
+| `pnpm release --issue <n>` | Waits until CI has finished green on `main`'s head commit (the [release gate](../CLAUDE.md#blocks) fails while CI runs; `--timeout <s>`, default 1800, `--interval <s>`, default 20), then opens `main` → `prod` from the release template: `Refs #n`, the PRs merged since the last release (the merge commits in `origin/prod..origin/main`) and a Rollback section naming the commit `prod` is on now. No version numbers or tags. It never merges into `prod`: a person does that after the checks in [Deploying to Railway](../CLAUDE.md#rules) | a release PR is already open, `prod` already has everything on `main`, CI is red or still running at the timeout, or issue `#n` is missing or not labelled `platform` |
+| `pnpm env:status` | Reads `/health` of development and production (`--env dev\|prod` for one) and compares the `sha` each reports with `origin/main` and `origin/prod`. `--offline` skips the `git fetch` | (exit 1) an environment is unreachable, not `ok`, reports the wrong `APP_ENV` or runs another commit |
+| `pnpm env:wait <dev\|prod> <sha>` | Polls that environment's `/health` until it reports the commit, e.g. after a merge (`--timeout <s>`, default 600, `--interval <s>`, default 10). Failed requests are retried, because a deploy restarts the service | (exit 1) the commit didn't arrive before the timeout, or the URL reports the other environment's `APP_ENV` |
+
+`--dry-run` on `team:promote`, `branches:sync` and `release` does every check and prints the PRs it would open, without opening them; `release --dry-run` reads CI once instead of waiting. The issue (`--issue`) is required because every PR links one: an issue for the promotion that the PR closes, or one platform issue that several syncs or releases refer to.
+
+The environment URLs aren't in the repository. Set `SDM_DEV_URL` and `SDM_PROD_URL` (the base URL of a game service, e.g. `https://<service>.up.railway.app`), or pass `--dev-url` / `--prod-url`. Without them `env:status` and `env:wait` exit with 3 and say what to set.
+
+A release, step by step: `pnpm release --issue <n>` opens the PR once CI is green on `main`; `pnpm env:status` (or `pnpm env:wait dev <sha>`) shows development runs that commit; someone else approves; a person merges; then `pnpm env:wait prod <merge commit>` shows production runs it.
 
 ## CI
 
