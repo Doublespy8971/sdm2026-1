@@ -31,6 +31,7 @@
     "check:determinism": "node server/tooling/workflow/check-determinism.mjs",
     "check:contract": "node server/tooling/workflow/check-contract.mjs",
     "team:set": "node server/tooling/workflow/team-set.mjs",
+    "issue:start": "node server/tooling/workflow/issue-start.mjs",
     "preflight": "node server/tooling/workflow/preflight.mjs",
     "preflight:quick": "node server/tooling/workflow/preflight.mjs --quick",
     "qa:bots": "node scripts/qa/bots.mjs",
