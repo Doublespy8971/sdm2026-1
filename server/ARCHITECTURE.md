@@ -60,6 +60,25 @@ Logs are pino JSON (`message` key, level names) so Railway's log explorer can fi
 
 Each game adds its own contract in `games/team-N/shared/`: Colyseus state schema, input schema and config schema (see `server/template/shared/index.ts`).
 
+## Gateway (`@sdm/gateway`)
+
+One address, one path per game. The gateway is the only public service of an environment; every game stays its own service on Railway's private network, so a crash in one game never takes the others down, and merging one team's game redeploys only that team's service.
+
+| Request | What happens |
+|---|---|
+| `/` | An index of the games, with the ones not released yet marked |
+| `/health` | The gateway's own `{ ok, env, sha, startedAt, games }`; it does not ask any game |
+| `/<game>` | Redirect (308) to `/<game>/` |
+| `/<game>/rest` | Proxied to `http://<game>.railway.internal:8080/rest`, WebSocket upgrades included |
+| anything else | A 404 page; a game that cannot be reached gives a 502 page |
+
+- The first path segment picks the game and is **removed**, so a game never sees its prefix. The Colyseus client supports this: with the endpoint `https://<address>/team-2` both the matchmaking requests and the WebSocket go through the prefix (`gateway.integration.test.ts` plays a real game that way).
+- A game that accepts an HTTP request and then stays silent for 30 s gets the 502 page from the gateway (`UPSTREAM_TIMEOUT_MS`), instead of the platform edge's generic error. WebSockets have no timeout: a live game is silent for long stretches. When a game is down, a WebSocket upgrade is answered with `502 Bad Gateway` (and an unknown game with 404), so a client can tell that from a dropped network.
+- The gateway passes `X-Forwarded-For`, `-Proto` and `-Host` through exactly as Railway's edge set them and adds nothing. The game trusts one proxy, as it always did, so `req.ip` is the last entry: the player's address as the edge saw it. A game behaves the same behind the gateway as when it is reached directly, so a game that is public by mistake cannot be given a fake address either (the per-IP limits for bug reports and live replays use `req.ip`).
+- Settings (`.env.example`): `GAMES`, `PLANNED_GAMES`, `UPSTREAM_PORT`, plus `PORT` and `APP_ENV` as for a game. On Railway `.railway/railway.ts` sets them from its own list of games.
+- Run it locally next to a game: `UPSTREAMS="team-2=http://127.0.0.1:2567" PORT=2570 node --import tsx server/gateway/server.ts`, then open <http://localhost:2570/team-2/>.
+- Tests: `server/gateway/src/gateway.test.ts` (fake games, WebSockets) and `gateway.integration.test.ts` (a real game server and a real Colyseus client through `/team-x`).
+
 ## Environments (Railway)
 
 Defined in [`.railway/railway.ts`](../.railway/railway.ts): one project `sdm2026-1`, one service per game, one replica each in `europe-west4`.

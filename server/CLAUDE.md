@@ -8,6 +8,7 @@
 |---|---|---|
 | `@sdm/core` | `server/core/` | Contract types (`shared`), the sim contract (`sim`), the Simulation and replay runner (`server`), and the client core (`client`) |
 | `@sdm/host` | `server/host/` | `startGameServer()` and `createGameRoom()`: the Colyseus + Express host, routes, logs and stats. Room test helpers in `@sdm/host/testing` |
+| `@sdm/gateway` | `server/gateway/` | The public front of an environment: serves each game at `/<game>/` (for example `/team-2/`) and proxies it to that game's private service, WebSockets included. Read [ARCHITECTURE.md](ARCHITECTURE.md) before changing it |
 | `@sdm/template` | `server/template/` | Reference game. Teams copy it to `games/team-N/` to start |
 | `@sdm/tooling` | `server/tooling/` | Shared TypeScript config (`tsconfig.base.json`) |
 
