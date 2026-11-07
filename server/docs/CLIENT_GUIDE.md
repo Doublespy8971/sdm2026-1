@@ -199,7 +199,7 @@ Replays of finished rooms stay in memory for an hour (50 rooms at most) and are 
 - State extends `BaseState`: `BaseState.extend({ ...yourFields }, "MyState")`. Don't write `tick`, `code`, `paused` or `seats`.
 - Config extends `RoomSettingsSchema`; numbers live in `config/game.json`.
 - Register rooms as factories in `room/index.ts`: `{ game: (deps) => createGameRoom(myGame, deps) }`.
-- Room tests: `import { boot } from "@sdm/host/testing"`, each test file on its own port.
+- Room tests: `import { boot } from "@sdm/host/testing"`, then `boot(config)` without a port (it picks a free one).
 
 Start a new game with `pnpm new-game team-N`. More rules: [../CLAUDE.md](../CLAUDE.md).
 
