@@ -10,6 +10,7 @@
 export * from "./debugOverlay.ts";
 export * from "./interpolation.ts";
 export * from "./netSim.ts";
+export * from "./netStats.ts";
 export * from "./prediction.ts";
 export * from "./rate.ts";
 export * from "./urlParams.ts";
