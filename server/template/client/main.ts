@@ -1,8 +1,9 @@
 /**
  * Template game client. Deliberately minimal: a lobby (create, or join by code), a Canvas 2D view
- * and keyboard input, plus the ~ debug overlay and its console from @sdm/core/client. The rest of the
- * client core (prediction, interpolation, F8) comes in #13; teams replace this file with their own
- * lobby and renderer.
+ * and keyboard input, using the client core from @sdm/core/client: the ~ debug overlay with its
+ * console, network stats and state inspector, F8 bug reports, and the netcode in ./netcode.ts
+ * (prediction, interpolation, ?lag= simulation). Teams replace this file with their own lobby and
+ * renderer.
  */
 import { Client, type Room } from "@colyseus/sdk";
 import {
@@ -14,8 +15,11 @@ import {
   createLogBuffer,
   formatServerStats,
   getGuestId,
+  inspectState,
+  NO_NET_CONDITIONS,
   normalizeRoomCode,
   readClientParams,
+  readNetConditions,
   trackRoomNetStats,
 } from "@sdm/core/client";
 import {
@@ -30,6 +34,7 @@ import {
 } from "@sdm/core/shared";
 import { templateGame } from "../shared/game.ts";
 import type { SampleState } from "../shared/index.ts";
+import { createTemplateNetcode } from "./netcode.ts";
 
 /** In local dev the server runs on :2567; deployed builds are served by the server itself. */
 export const SERVER_URL: string =
@@ -45,6 +50,8 @@ const TEAM_LABEL = "platform";
 
 const app = document.getElementById("app") as HTMLElement;
 const params = readClientParams(location.search);
+// ?lag=300&jitter=50&loss=5 simulates a bad connection; null when none is set.
+const netConditions = readNetConditions(location.search);
 const client = new Client(SERVER_URL);
 /** Same in every tab and after a reload: the room shows its fingerprint as `seats[id].guest`. */
 const guestId = getGuestId();
@@ -127,7 +134,7 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
       playerId: room.sessionId,
       tick: room.state.tick,
       scenario: params.scenario,
-      net: null,
+      net: netConditions,
       url: location.href,
       userAgent: navigator.userAgent,
     }),
@@ -136,8 +143,14 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
   const keys = new Set<string>();
   addEventListener("keydown", (e) => keys.add(e.key.toLowerCase()));
   addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
-  let seq = 0;
   let left = false;
+  // Prediction for you, interpolation for others, and the ?lag= simulation (see ./netcode.ts).
+  const netcode = createTemplateNetcode({
+    myId: room.sessionId,
+    conditions: netConditions ?? NO_NET_CONDITIONS,
+    config: templateGame.config,
+  });
+  room.onStateChange((state) => netcode.onState(state, performance.now()));
   // Notices and the disconnect message stay on screen instead of being overwritten by the next frame.
   const showMessage = (text: string) => {
     hud.dataset.locked = "1";
@@ -178,31 +191,36 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
     // One input per server tick is enough; the server applies the last input of each tick.
     if (now - lastSentAt >= sendEveryMs) {
       lastSentAt = now;
-      room.send("input", {
-        seq: ++seq,
-        data: {
-          dx: axis(["a", "arrowleft"], ["d", "arrowright"]),
-          dy: axis(["w", "arrowup"], ["s", "arrowdown"]),
-        },
-      });
+      netcode.sendInput(
+        { dx: axis(["a", "arrowleft"], ["d", "arrowright"]), dy: axis(["w", "arrowup"], ["s", "arrowdown"]) },
+        now,
+      );
     }
+    netcode.frame(now, (envelope) => room.send(ClientMessage.Input, envelope));
 
+    const { radius } = templateGame.config.player;
     ctx.fillStyle = "#11161d";
     ctx.fillRect(0, 0, width, height);
     ctx.fillStyle = "#fcc419";
     for (const p of state.pickups?.values() ?? []) circle(ctx, p.x, p.y, templateGame.config.pickups.radius);
+    // With lag on, a ring shows where the server last saw you: the gap is the lag prediction hides.
+    const server = netcode.serverPosition();
+    if (netConditions && server) ring(ctx, server.x, server.y, radius);
+    const others = netcode.others(now);
     for (const [id, p] of state.players?.entries() ?? []) {
+      const pos = (id === room.sessionId ? netcode.myPosition() : others.get(id)) ?? p;
       ctx.fillStyle = p.color;
       ctx.globalAlpha = state.seats.get(id)?.connected === false ? 0.35 : 1;
-      circle(ctx, p.x, p.y, templateGame.config.player.radius);
+      circle(ctx, pos.x, pos.y, radius);
       ctx.globalAlpha = 1;
       ctx.fillStyle = "#d6dde4";
-      ctx.fillText(`${p.name} ${p.score}`, p.x - 14, p.y - 20);
+      ctx.fillText(`${p.name} ${p.score}`, pos.x - 14, pos.y - 20);
     }
 
     const invite = state.code ? buildInviteLink(location.href, state.code) : "(quick match)";
+    const lag = netConditions ? ` · simulated lag ${netConditions.latencyMs} ms` : "";
     if (!hud.dataset.locked)
-      hud.textContent = `code ${state.code || "-"} · invite ${invite} · WASD/arrows to move`;
+      hud.textContent = `code ${state.code || "-"} · invite ${invite} · WASD/arrows to move${lag}`;
     const { fps, frameMs } = meter.frame(now);
     overlay.update(
       {
@@ -218,6 +236,8 @@ function play(room: Room<SampleState>, health: BuildInfo): void {
         // The public fingerprint of guestId: two tabs of this browser show the same value.
         guest: state.seats?.get(room.sessionId)?.guest || "-",
         ...(serverStats ? { server: formatServerStats(serverStats) } : {}),
+        // State inspector: the room's live state, pickups summarised.
+        ...inspectState(state.toJSON(), { summarise: ["pickups"], maxLines: 16 }),
       },
       now,
     );
@@ -230,6 +250,14 @@ function circle(ctx: CanvasRenderingContext2D, x: number, y: number, r: number):
   ctx.beginPath();
   ctx.arc(x, y, r, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function ring(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(214, 221, 228, 0.5)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
 }
 
 /** sessionStorage can throw in private windows; the game still works without it. */
